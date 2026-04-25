@@ -1,8 +1,35 @@
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/contexts/language";
+import { useEffect, useState } from "react";
+import { fetchActiveProgramFile, type ActiveProgramFile } from "@/lib/program";
+import { downloadPublicFile } from "@/lib/download";
 
 export function ProgramCTA() {
+  const { t } = useLanguage();
+  const [file, setFile] = useState<ActiveProgramFile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      setLoading(true);
+      try {
+        const next = await fetchActiveProgramFile();
+        if (!cancelled) setFile(next);
+      } catch (e) {
+        if (!cancelled) setFile(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section className="container py-16">
       <motion.div
@@ -15,15 +42,24 @@ export function ProgramCTA() {
         <div className="absolute -left-10 -bottom-10 h-48 w-48 rounded-full bg-secondary-glow/30 blur-3xl" />
         <div className="relative grid md:grid-cols-[1fr_auto] gap-6 items-center">
           <div>
-            <div className="text-xs uppercase tracking-widest text-secondary-glow font-bold mb-3">PDF · 4.2 MB</div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-2">Download the full program</h2>
-            <p className="text-primary-foreground/80 max-w-xl">
-              All sessions, speakers, room maps and CME credit details — in one beautifully designed document.
-            </p>
+            <div className="text-xs uppercase tracking-widest text-secondary-glow font-bold mb-3">
+              {t.programCta.fileInfo}
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold mb-2">{t.programCta.title}</h2>
+            <p className="text-primary-foreground/80 max-w-xl">{t.programCta.description}</p>
           </div>
-          <Button size="xl" variant="hero" className="shrink-0">
+          <Button
+            size="xl"
+            variant="hero"
+            className="shrink-0"
+            disabled={loading || !file?.file_url}
+            onClick={() => {
+              if (!file?.file_url) return;
+              void downloadPublicFile({ url: file.file_url, fileName: `${file.title || "Program"}.pdf` });
+            }}
+          >
             <Download className="h-4 w-4 mr-1" />
-            Download Program
+            {t.programCta.button}
           </Button>
         </div>
       </motion.div>

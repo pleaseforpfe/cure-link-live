@@ -227,6 +227,31 @@
   .arabic {
     font-family: 'Cairo', 'Inter', sans-serif;
   }
+
+  .frost-scrollbar {
+    scrollbar-color: hsl(var(--secondary)) hsl(var(--border));
+    scrollbar-width: thin;
+  }
+
+  .frost-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .frost-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--border) / 0.6);
+    border-radius: 999px;
+  }
+
+  .frost-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--secondary));
+    border-radius: 999px;
+    border: 2px solid hsl(var(--border));
+  }
+
+  .frost-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--secondary-glow));
+  }
 }
 
 @layer utilities {

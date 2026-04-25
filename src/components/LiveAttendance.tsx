@@ -2,15 +2,51 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Activity } from "lucide-react";
 import { CountUp } from "./CountUp";
+import { useLanguage } from "@/contexts/language";
+import { supabase } from "@/lib/supabase";
 
 export function LiveAttendance() {
   const [count, setCount] = useState(4218);
+  const [stats, setStats] = useState<{ speakers: number; sessions: number; partners: number }>({
+    speakers: 64,
+    sessions: 120,
+    partners: 42,
+  });
+  const { t } = useLanguage();
 
   useEffect(() => {
     const t = setInterval(() => {
       setCount((c) => c + Math.floor(Math.random() * 7) - 2);
     }, 3500);
     return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const [timelineRes, partnersRes] = await Promise.all([
+        supabase.from("timeline_cards").select("full_name"),
+        supabase.from("partners").select("id"),
+      ]);
+
+      if (cancelled) return;
+      if (timelineRes.error) return;
+
+      const speakers = new Set<string>();
+      for (const row of timelineRes.data ?? []) {
+        if (row.full_name) speakers.add(row.full_name.trim());
+      }
+
+      setStats({
+        speakers: speakers.size || 0,
+        sessions: (timelineRes.data ?? []).length,
+        partners: partnersRes.data?.length ?? 0,
+      });
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -30,7 +66,9 @@ export function LiveAttendance() {
             <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-live live-glow" />
           </div>
           <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Live Attendance</div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
+              {t.liveAttendance.label}
+            </div>
             <div className="text-sm text-foreground/70 arabic">حاضرون الآن</div>
           </div>
         </div>
@@ -41,14 +79,14 @@ export function LiveAttendance() {
           </div>
           <div className="text-xs uppercase tracking-wider text-muted-foreground mt-2 flex items-center justify-center gap-1.5">
             <Activity className="h-3 w-3 text-live" />
-            Updated in real-time
+            {t.liveAttendance.updated}
           </div>
         </div>
 
         <div className="flex md:justify-end gap-6 text-center">
-          <Stat label="Speakers" value={64} />
-          <Stat label="Sessions" value={120} />
-          <Stat label="Countries" value={42} />
+          <Stat label={t.liveAttendance.speakers} value={stats.speakers} />
+          <Stat label={t.liveAttendance.sessions} value={stats.sessions} />
+          <Stat label={t.liveAttendance.partners} value={stats.partners} />
         </div>
       </motion.div>
     </section>

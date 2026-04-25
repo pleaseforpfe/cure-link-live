@@ -5,20 +5,22 @@ import { Moon, Sun, Menu, X, Stethoscope } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const links = [
-  { to: "/", label: "Home" },
-  { to: "/timeline", label: "Live Timeline" },
-  { to: "/partners", label: "Partners" },
-  { to: "/clubs", label: "Clubs" },
-  { to: "/organizers", label: "Organizers" },
-  { to: "/portfolio", label: "Portfolio" },
-];
+import { useLanguage } from "@/contexts/language";
 
 export function Navbar() {
   const { theme, toggle } = useTheme();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
+
+  const links = [
+    { to: "/", label: t.nav.home },
+    { to: "/timeline", label: t.nav.liveProgram },
+    { to: "/partners", label: t.nav.partners },
+    { to: "/clubs", label: t.nav.postCoffee },
+    { to: "/organizers", label: t.nav.organizers },
+    { to: "/portfolio", label: t.nav.portfolio },
+  ];
 
   return (
     <header className="sticky top-0 z-50">
@@ -72,7 +74,15 @@ export function Navbar() {
                 </motion.div>
               </AnimatePresence>
             </Button>
-            <Button variant="hero" size="sm" className="hidden sm:inline-flex">Register</Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full border border-border/60"
+              onClick={() => setLanguage(language === "en" ? "fr" : "en")}
+              aria-label="Toggle language"
+            >
+              {t.languageToggle}
+            </Button>
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(!open)} aria-label="Menu">
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -81,18 +91,18 @@ export function Navbar() {
 
         <AnimatePresence>
           {open && (
-            <motion.nav
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="lg:hidden overflow-hidden border-t border-border/50"
-            >
-              <div className="container py-3 flex flex-col gap-1">
-                {links.map((l) => (
-                  <Link
-                    key={l.to}
-                    to={l.to}
-                    onClick={() => setOpen(false)}
+                <motion.nav
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="lg:hidden overflow-hidden border-t border-border/50"
+                >
+                  <div className="container py-3 flex flex-col gap-1">
+                    {links.map((l) => (
+                      <Link
+                        key={l.to}
+                        to={l.to}
+                        onClick={() => setOpen(false)}
                     className={cn(
                       "px-4 py-3 rounded-xl text-sm font-medium transition-colors",
                       pathname === l.to
