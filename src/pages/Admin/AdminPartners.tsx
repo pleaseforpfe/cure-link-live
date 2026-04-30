@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Pencil, Plus, Trash2, UploadCloud } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2, UploadCloud, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +28,7 @@ type PartnerRow = {
   name: string;
   description: string;
   image_url: string;
+  partner_link: string | null;
   created_at: string;
 };
 
@@ -55,6 +56,14 @@ function newUuid() {
   const id = globalThis.crypto?.randomUUID?.();
   if (!id) throw new Error("Browser does not support crypto.randomUUID().");
   return id;
+}
+
+function normalizeLink(raw: string | null | undefined) {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://${s}`;
 }
 
 async function uploadToBucket(path: string, file: File) {
@@ -95,6 +104,7 @@ export default function AdminPartners() {
     category: "clubs" as PartnerCategory,
     name: "",
     description: "",
+    partner_link: "",
   });
 
   const grouped = useMemo(() => {
@@ -132,7 +142,7 @@ export default function AdminPartners() {
     setError(null);
     const { data, error } = await supabase
       .from("partners")
-      .select("id, category, name, description, image_url, created_at")
+      .select("id, category, name, description, image_url, partner_link, created_at")
       .order("created_at", { ascending: true });
     if (error) {
       setError(error.message);
@@ -150,7 +160,7 @@ export default function AdminPartners() {
   useEffect(() => {
     if (!open) {
       setError(null);
-      setForm({ category: "clubs", name: "", description: "" });
+      setForm({ category: "clubs", name: "", description: "", partner_link: "" });
       setImageFile(null);
       setSavingProgress(0);
       setSavingStage(null);
@@ -198,6 +208,7 @@ export default function AdminPartners() {
         name,
         description,
         image_url: "",
+        partner_link: normalizeLink(form.partner_link),
       };
       const insertRes = await supabase.from("partners").insert(payload);
       if (insertRes.error) throw insertRes.error;
@@ -210,7 +221,10 @@ export default function AdminPartners() {
 
       setSavingStage("Finalizing...");
       setSavingProgress(85);
-      const updateRes = await supabase.from("partners").update({ image_url: publicUrl }).eq("id", id);
+      const updateRes = await supabase
+        .from("partners")
+        .update({ image_url: publicUrl, partner_link: normalizeLink(form.partner_link) })
+        .eq("id", id);
       if (updateRes.error) throw updateRes.error;
 
       setSavingProgress(100);
@@ -238,7 +252,7 @@ export default function AdminPartners() {
 
   function openEdit(row: PartnerRow) {
     setEditing(row);
-    setForm({ category: row.category, name: row.name ?? "", description: row.description ?? "" });
+    setForm({ category: row.category, name: row.name ?? "", description: row.description ?? "", partner_link: row.partner_link ?? "" });
     setEditOpen(true);
   }
 
@@ -275,6 +289,8 @@ export default function AdminPartners() {
         name,
         description,
       };
+      // include partner link (nullable, normalized)
+      payload.partner_link = normalizeLink(form.partner_link);
       if (imageUrl) payload.image_url = imageUrl;
 
       const { error } = await supabase.from("partners").update(payload).eq("id", id);
@@ -531,8 +547,18 @@ export default function AdminPartners() {
 
             <div className="grid gap-2">
               <Label>Description</Label>
-              <Input value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} disabled={saving} />
+                    <Input value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} disabled={saving} />
             </div>
+
+                  <div className="grid gap-2">
+                    <Label>Link (optional)</Label>
+                    <Input
+                      placeholder="https://example.com"
+                      value={form.partner_link}
+                      onChange={(e) => setForm((p) => ({ ...p, partner_link: e.target.value }))}
+                      disabled={saving}
+                    />
+                  </div>
 
             <div className="grid gap-2">
               <Label>Image</Label>
@@ -632,6 +658,7 @@ export default function AdminPartners() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Link</TableHead>
                       <TableHead>Image</TableHead>
                       <TableHead className="w-[160px]">Actions</TableHead>
                     </TableRow>
@@ -639,22 +666,44 @@ export default function AdminPartners() {
                   <TableBody>
                     {grouped[c.id].map((p) => (
                       <TableRow key={p.id}>
-                        <TableCell className="font-semibold">{p.name}</TableCell>
+                        <TableCell className="font-semibold flex items-center gap-2">
+                          <span className="truncate">{p.name}</span>
+                          {p.partner_link ? (
+                            <a
+                              href={normalizeLink(p.partner_link) ?? undefined}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted hover:bg-secondary/20 text-muted-foreground hover:text-secondary transition-colors"
+                              title="Open partner link"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          ) : null}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{p.description}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-2xl overflow-hidden bg-muted ring-1 ring-border shrink-0">
                               <img src={p.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
                             </div>
-                            <a
-                              href={p.image_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-muted-foreground truncate max-w-[260px] hover:underline underline-offset-4"
-                            >
-                              {p.image_url}
-                            </a>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {p.partner_link ? (
+                            <a
+                              href={p.partner_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-muted-foreground truncate max-w-[260px] inline-flex items-center gap-2 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              <span className="truncate">{p.partner_link}</span>
+                            </a>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

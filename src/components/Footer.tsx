@@ -1,20 +1,20 @@
-import { Stethoscope, Mail, Twitter, Linkedin, Instagram, Facebook } from "lucide-react";
+import { Mail, Twitter, Linkedin, Instagram, Facebook } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/language";
+import { useTheme } from "@/hooks/use-theme";
 
 export function Footer() {
   const { t } = useLanguage();
+  const { theme } = useTheme();
 
   return (
     <footer className="bg-primary text-primary-foreground mt-24 relative overflow-hidden">
       <div className="absolute inset-0 bg-mesh opacity-40" />
       <div className="container relative py-16 grid md:grid-cols-4 gap-10">
         <div className="md:col-span-2">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="h-10 w-10 rounded-xl bg-gradient-secondary flex items-center justify-center shadow-glow">
-              <Stethoscope className="h-5 w-5" />
-            </div>
-            <div className="font-bold text-xl">MedConf 2026</div>
+          <div className="flex items-center gap-4 mb-4">
+            <img src={theme === "light" ? "/logo_light.png" : "/logo.png"} alt="Logo" className="h-20 w-20 object-contain flex-none" />
+            <div className="font-bold text-xl">4JMC 2026</div>
           </div>
           <p className="text-primary-foreground/70 max-w-md text-sm leading-relaxed">{t.footer.description}</p>
           <div className="flex gap-3 mt-6">

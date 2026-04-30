@@ -30,7 +30,7 @@ type ClubRow = {
 };
 
 const CLUBS_BUCKET = "clubs";
-const MAX_GALLERY = 3;
+const MAX_GALLERY = 20;
 
 function slugify(input: string) {
   return input
@@ -82,6 +82,8 @@ export default function AdminPostCoffee() {
 
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [galleryPreviewUrls, setGalleryPreviewUrls] = useState<string[]>([]);
+  const [removedPhotoIndices, setRemovedPhotoIndices] = useState<Set<number>>(new Set());
+  const [removedExistingPhotoIndices, setRemovedExistingPhotoIndices] = useState<Set<number>>(new Set());
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   const [form, setForm] = useState({
@@ -135,6 +137,7 @@ export default function AdminPostCoffee() {
       setError(null);
       setForm({ club_name: "", workshop_title: "", description: "" });
       setGalleryFiles([]);
+      setRemovedPhotoIndices(new Set());
       setSavingProgress(0);
       setSavingStage(null);
     }
@@ -145,6 +148,8 @@ export default function AdminPostCoffee() {
       setError(null);
       setEditing(null);
       setGalleryFiles([]);
+      setRemovedPhotoIndices(new Set());
+      setRemovedExistingPhotoIndices(new Set());
       setSavingProgress(0);
       setSavingStage(null);
     }
@@ -195,11 +200,12 @@ export default function AdminPostCoffee() {
         setSavingProgress(30);
         const folder = `${slugify(clubName)}/${id}`;
         const uploaded: string[] = [];
-        for (let i = 0; i < galleryFiles.length; i += 1) {
-          const f = galleryFiles[i]!;
+        const filesToUpload = galleryFiles.filter((_, idx) => !removedPhotoIndices.has(idx));
+        for (let i = 0; i < filesToUpload.length; i += 1) {
+          const f = filesToUpload[i]!;
           const p = `${folder}/gallery-${i + 1}-${Date.now()}-${safeFileName(f.name)}`;
           uploaded.push(await uploadToBucket(p, f));
-          const ratio = (i + 1) / galleryFiles.length;
+          const ratio = (i + 1) / filesToUpload.length;
           setSavingProgress(30 + Math.round(45 * ratio));
         }
 
@@ -256,8 +262,12 @@ export default function AdminPostCoffee() {
       return;
     }
 
-    if (galleryFiles.length > MAX_GALLERY) {
-      const msg = `Gallery max is ${MAX_GALLERY} images.`;
+    const newPhotosCount = galleryFiles.length - removedPhotoIndices.size;
+    const existingPhotosCount = Math.max(0, (editing?.gallery?.length ?? 0) - removedExistingPhotoIndices.size);
+    const totalPhotosCount = newPhotosCount + existingPhotosCount;
+    
+    if (totalPhotosCount > MAX_GALLERY) {
+      const msg = `Gallery max is ${MAX_GALLERY} images (you have ${totalPhotosCount}).`;
       setError(msg);
       toast.error(msg);
       return;
@@ -268,20 +278,26 @@ export default function AdminPostCoffee() {
       setSavingStage("Saving changes...");
       setSavingProgress(20);
 
-      let nextGallery: string[] | null = null;
+      let nextGallery: string[] = [];
+      
+      // Add existing photos (excluding removed ones)
+      if (editing?.gallery?.length) {
+        nextGallery = editing.gallery.filter((_, idx) => !removedExistingPhotoIndices.has(idx));
+      }
+      
+      // Upload new files if any
       if (galleryFiles.length) {
         setSavingStage("Uploading gallery...");
         setSavingProgress(35);
         const folder = `${slugify(clubName)}/${id}`;
-        const uploaded: string[] = [];
-        for (let i = 0; i < galleryFiles.length; i += 1) {
-          const f = galleryFiles[i]!;
+        const filesToUpload = galleryFiles.filter((_, idx) => !removedPhotoIndices.has(idx));
+        for (let i = 0; i < filesToUpload.length; i += 1) {
+          const f = filesToUpload[i]!;
           const p = `${folder}/gallery-${i + 1}-${Date.now()}-${safeFileName(f.name)}`;
-          uploaded.push(await uploadToBucket(p, f));
-          const ratio = (i + 1) / galleryFiles.length;
+          nextGallery.push(await uploadToBucket(p, f));
+          const ratio = (i + 1) / filesToUpload.length;
           setSavingProgress(35 + Math.round(40 * ratio));
         }
-        nextGallery = uploaded;
       }
 
       setSavingStage("Finalizing...");
@@ -291,7 +307,7 @@ export default function AdminPostCoffee() {
         workshop_title: workshopTitle,
         description,
       };
-      if (nextGallery) payload.gallery = nextGallery;
+      if (nextGallery.length) payload.gallery = nextGallery;
 
       const updateRes = await supabase.from("clubs").update(payload).eq("id", id);
       if (updateRes.error) throw updateRes.error;
@@ -446,10 +462,23 @@ export default function AdminPostCoffee() {
                       <div className="mt-4 grid grid-cols-3 gap-3">
                         {galleryPreviewUrls.length ? (
                           galleryPreviewUrls.map((u, idx) => (
-                            <div key={idx} className="aspect-[4/3] rounded-2xl overflow-hidden bg-muted ring-1 ring-border">
+                            <div key={idx} className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-muted ring-1 ring-border">
                               <img src={u} alt="" className="h-full w-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newRemoved = new Set(removedPhotoIndices);
+                                  newRemoved.add(idx);
+                                  setRemovedPhotoIndices(newRemoved);
+                                }}
+                                disabled={saving}
+                                className="absolute top-1 right-1 p-1 rounded-lg bg-red-600/90 hover:bg-red-700 text-white shadow-lg disabled:opacity-50"
+                                title="Remove this photo"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             </div>
-                          ))
+                          )).filter((_, idx) => !removedPhotoIndices.has(idx))
                         ) : (
                           <>
                             <div className="aspect-[4/3] rounded-2xl border border-dashed border-border bg-background/40" />
@@ -460,8 +489,8 @@ export default function AdminPostCoffee() {
                       </div>
 
                       <div className="mt-3 text-xs text-muted-foreground">
-                        Selected: <span className="font-semibold text-foreground tabular-nums">{galleryFiles.length}</span> /{" "}
-                        {MAX_GALLERY}
+                        Selected: <span className="font-semibold text-foreground tabular-nums">{Math.max(0, galleryFiles.length - removedPhotoIndices.size)}</span> /
+                        {" "}{MAX_GALLERY}
                       </div>
                     </div>
                   </div>
@@ -570,16 +599,42 @@ export default function AdminPostCoffee() {
               <div className="mt-4 grid grid-cols-3 gap-3">
                 {galleryPreviewUrls.length ? (
                   galleryPreviewUrls.map((u, idx) => (
-                    <div key={idx} className="aspect-[4/3] rounded-2xl overflow-hidden bg-muted ring-1 ring-border">
+                    <div key={idx} className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-muted ring-1 ring-border">
                       <img src={u} alt="" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newRemoved = new Set(removedPhotoIndices);
+                          newRemoved.add(idx);
+                          setRemovedPhotoIndices(newRemoved);
+                        }}
+                        disabled={saving}
+                        className="absolute top-1 right-1 p-1 rounded-lg bg-red-600/90 hover:bg-red-700 text-white shadow-lg disabled:opacity-50"
+                        title="Remove this photo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                  ))
+                  )).filter((_, idx) => !removedPhotoIndices.has(idx))
                 ) : editing?.gallery?.length ? (
                   editing.gallery.slice(0, MAX_GALLERY).map((u, idx) => (
-                    <div key={idx} className="aspect-[4/3] rounded-2xl overflow-hidden bg-muted ring-1 ring-border">
+                    <div key={idx} className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-muted ring-1 ring-border">
                       <img src={u} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newRemoved = new Set(removedExistingPhotoIndices);
+                          newRemoved.add(idx);
+                          setRemovedExistingPhotoIndices(newRemoved);
+                        }}
+                        disabled={saving}
+                        className="absolute top-1 right-1 p-1 rounded-lg bg-red-600/90 hover:bg-red-700 text-white shadow-lg disabled:opacity-50"
+                        title="Remove this photo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                  ))
+                  )).filter((_, idx) => !removedExistingPhotoIndices.has(idx))
                 ) : (
                   <>
                     <div className="aspect-[4/3] rounded-2xl border border-dashed border-border bg-background/40" />
@@ -590,8 +645,8 @@ export default function AdminPostCoffee() {
               </div>
 
               <div className="mt-3 text-xs text-muted-foreground">
-                Selected: <span className="font-semibold text-foreground tabular-nums">{galleryFiles.length}</span> /{" "}
-                {MAX_GALLERY}
+                Total: <span className="font-semibold text-foreground tabular-nums">{Math.max(0, (editing?.gallery?.length ?? 0) - removedExistingPhotoIndices.size + (galleryFiles.length - removedPhotoIndices.size))}</span> /
+                {" "}{MAX_GALLERY}
               </div>
             </div>
           </div>

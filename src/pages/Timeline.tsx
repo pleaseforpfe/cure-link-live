@@ -7,9 +7,31 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useLanguage } from "@/contexts/language";
 
+type SessionRow = {
+  id: string;
+  title: string;
+};
+
+type ModeratorRow = {
+  session_id: string;
+  full_name: string;
+};
+
+type ProgramRow = TimelineSession & {
+  session_id: string | null;
+};
+
+type SessionGroup = {
+  id: string;
+  title: string;
+  moderators: string[];
+  programs: TimelineSession[];
+  livePrograms: TimelineSession[];
+};
+
 export default function Timeline() {
   const { t } = useLanguage();
-  const [sessions, setSessions] = useState<TimelineSession[]>([]);
+  const [sessionGroups, setSessionGroups] = useState<SessionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,23 +40,43 @@ export default function Timeline() {
     async function load() {
       setLoading(true);
       setError(null);
-      const { data, error } = await supabase
-        .from("timeline_cards")
-        .select(
-          "id, full_name, specialty, organization, photo_url, linkedin_url, talk_title, description, starts_at, ends_at, links, gallery, is_live, stream_url, sort_order",
-        )
-        .order("sort_order", { ascending: true })
-        .order("starts_at", { ascending: true });
+      const [sessionsRes, moderatorsRes, programsRes] = await Promise.all([
+        supabase.from("sessions").select("id, title").order("created_at", { ascending: true }),
+        supabase.from("moderators").select("session_id, full_name").order("created_at", { ascending: true }),
+        supabase
+          .from("timeline_cards")
+          .select(
+            "id, full_name, specialty, organization, photo_url, linkedin_url, talk_title, description, starts_at, ends_at, links, gallery, is_live, stream_url, sort_order, session_id",
+          )
+          .order("sort_order", { ascending: true })
+          .order("starts_at", { ascending: true }),
+      ]);
 
       if (cancelled) return;
-      if (error) {
-        setError(error.message);
-        setSessions([]);
+      if (sessionsRes.error) {
+        setError(sessionsRes.error.message);
+        setSessionGroups([]);
+        setLoading(false);
+        return;
+      }
+      if (moderatorsRes.error) {
+        setError(moderatorsRes.error.message);
+        setSessionGroups([]);
+        setLoading(false);
+        return;
+      }
+      if (programsRes.error) {
+        setError(programsRes.error.message);
+        setSessionGroups([]);
         setLoading(false);
         return;
       }
 
-      const next = (data ?? []).map((row) => {
+      const programRows = (programsRes.data ?? []) as ProgramRow[];
+      const sessionRows = (sessionsRes.data ?? []) as SessionRow[];
+      const moderatorRows = (moderatorsRes.data ?? []) as ModeratorRow[];
+
+      const next = programRows.map((row) => {
         const r = row as {
           id: string;
           full_name: string;
@@ -74,7 +116,20 @@ export default function Timeline() {
         } satisfies TimelineSession;
       });
 
-      setSessions(next);
+      const grouped = sessionRows.map((session) => {
+        const programsForSession = next.filter((program) => (programRows.find((row) => row.id === program.id)?.session_id ?? null) === session.id);
+        const moderatorsForSession = moderatorRows.filter((moderator) => moderator.session_id === session.id).map((moderator) => moderator.full_name);
+        const livePrograms = programsForSession.filter((program) => getTimelineStatus(program) === "live");
+        return {
+          id: session.id,
+          title: session.title,
+          moderators: moderatorsForSession,
+          programs: programsForSession,
+          livePrograms,
+        } satisfies SessionGroup;
+      });
+
+      setSessionGroups(grouped.filter((group) => group.programs.length > 0));
       setLoading(false);
     }
     load();
@@ -83,15 +138,17 @@ export default function Timeline() {
     };
   }, []);
 
-  const sorted = useMemo(() => {
-    const order = { live: 0, upcoming: 1, done: 2 } as const;
-    return [...sessions].sort((a, b) => {
-      const sa = order[getTimelineStatus(a)];
-      const sb = order[getTimelineStatus(b)];
-      if (sa !== sb) return sa - sb;
-      return a.startsAt - b.startsAt;
+  const sortedSessionGroups = useMemo(() => {
+    return [...sessionGroups].sort((a, b) => {
+      const aLive = a.livePrograms.length > 0 ? 1 : 0;
+      const bLive = b.livePrograms.length > 0 ? 1 : 0;
+      if (aLive !== bLive) return bLive - aLive;
+
+      const aFirst = Math.min(...a.programs.map((p) => p.startsAt));
+      const bFirst = Math.min(...b.programs.map((p) => p.startsAt));
+      return aFirst - bFirst;
     });
-  }, [sessions]);
+  }, [sessionGroups]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -119,14 +176,47 @@ export default function Timeline() {
         </section>
 
         <section className="container py-16">
-          <div className="space-y-5">
+          <div className="space-y-8">
             <AnimatePresence>
               {loading ? (
                 <div className="text-sm text-muted-foreground">Loading live program…</div>
               ) : error ? (
                 <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
-              ) : sorted.length ? (
-                sorted.map((s) => <SpeakerCard key={s.id} session={s} />)
+              ) : sortedSessionGroups.length ? (
+                <div className="space-y-6">
+                  {sortedSessionGroups.map((group) => (
+                    <motion.section key={group.id} layout initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                      <div className="rounded-3xl border bg-card shadow-card overflow-hidden">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-6 py-5">
+                          <div>
+                            <div className="text-xs uppercase tracking-widest text-secondary font-bold">Session</div>
+                            <h2 className="text-2xl md:text-3xl font-black">{group.title}</h2>
+                            {group.moderators.length ? (
+                              <div className="mt-2 text-sm md:text-base font-semibold text-foreground/85">
+                                Moderators: <span className="font-semibold text-foreground">{group.moderators.join(" · ")}</span>
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {group.livePrograms.length ? (
+                              <span className="px-3 py-1 rounded-full bg-live text-live-foreground text-xs font-bold uppercase tracking-widest">
+                                Live
+                              </span>
+                            ) : null}
+                            <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-bold uppercase tracking-widest">
+                              {group.programs.length} programs
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-4 md:p-6 space-y-4">
+                          {group.programs.map((program) => (
+                            <SpeakerCard key={program.id} session={program} />
+                          ))}
+                        </div>
+                      </div>
+                    </motion.section>
+                  ))}
+                </div>
               ) : (
                 <div className="text-sm text-muted-foreground">No sessions yet.</div>
               )}

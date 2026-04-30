@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Moon, Sun, Menu, X, Stethoscope } from "lucide-react";
+import { Moon, Sun, Menu, X } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,19 +19,17 @@ export function Navbar() {
     { to: "/partners", label: t.nav.partners },
     { to: "/clubs", label: t.nav.postCoffee },
     { to: "/organizers", label: t.nav.organizers },
-    { to: "/portfolio", label: t.nav.portfolio },
+    { to: "/gallery", label: t.nav.Gallery },
   ];
 
   return (
     <header className="sticky top-0 z-50">
       <div className="glass border-b border-border/50">
         <div className="container flex h-16 items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="relative h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
-              <Stethoscope className="h-5 w-5 text-primary-foreground" />
-            </div>
+          <Link to="/" className="flex items-center gap-4 group">
+            <img src={theme === "light" ? "/logo_light.png" : "/logo.png"} alt="Logo" className="h-16 w-16 object-contain flex-none" />
             <div className="leading-tight">
-              <div className="font-bold text-base tracking-tight">MedConf</div>
+              <div className="font-bold text-base tracking-tight">4JMC</div>
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">2026 · Global</div>
             </div>
           </Link>

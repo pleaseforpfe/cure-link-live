@@ -79,9 +79,9 @@ Ordering:
 - Groups: order by `created_at` ascending.
 - People within a group: order by `created_at` ascending.
 
-## Portfolio (`/portfolio`)
+## Portfolio (`/gallery`)
 
-The portfolio page currently renders items from `src/pages/Portfolio.tsx` (`items`).
+The portfolio page currently renders items from `src/pages/gallery.tsx` (`items`).
 The table `public.portfolio_items` (migration in
 `supabase/migrations/20260424173000_create_portfolio_items.sql`) is intended to hold
 the same data.

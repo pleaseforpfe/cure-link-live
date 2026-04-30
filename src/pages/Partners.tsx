@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { ExternalLink } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useLanguage } from "@/contexts/language";
@@ -13,6 +14,7 @@ type PartnerRow = {
   name: string;
   description: string;
   image_url: string;
+  partner_link: string | null;
 };
 
 export default function Partners() {
@@ -29,7 +31,7 @@ export default function Partners() {
       setError(null);
       const { data, error } = await supabase
         .from("partners")
-        .select("id, category, name, description, image_url")
+        .select("id, category, name, description, image_url, partner_link")
         .order("created_at", { ascending: true });
 
       if (cancelled) return;
@@ -124,7 +126,19 @@ export default function Partners() {
                               <div className="text-xs uppercase tracking-widest text-muted-foreground">{p.description}</div>
                             </div>
                           </div>
-                          <div className="h-8 w-8 rounded-full bg-muted group-hover:bg-secondary/20 transition-colors" />
+                          {p.partner_link ? (
+                            <a
+                              href={p.partner_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="h-8 w-8 rounded-full bg-muted group-hover:bg-secondary/20 transition-colors flex items-center justify-center"
+                              title="Visit partner site"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-muted group-hover:bg-secondary/20 transition-colors" />
+                          )}
                         </div>
                         <div className="relative aspect-[4/3] overflow-hidden">
                           <img

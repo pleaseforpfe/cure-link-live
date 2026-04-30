@@ -1,0 +1,513 @@
+\documentclass[11pt,a4paper]{article}
+
+%==================== PACKAGES ====================%
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usepackage{setspace}
+
+\usetikzlibrary{arrows.meta, positioning, calc}
+\onehalfspacing
+
+%==================== HEADER ====================%
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Internship Platform Report}
+\fancyhead[R]{\thepage}
+
+%==================== TITLE PAGE ====================%
+\begin{document}
+
+\begin{titlepage}
+\begin{tikzpicture}[remember picture,overlay]
+\draw[line width=1.2pt,green!45!black] ($(current page.north west)+(1cm,-1cm)$) rectangle ($(current page.south east)+(-1cm,1cm)$);
+\draw[line width=0.5pt,green!45!black!60] ($(current page.north west)+(1.25cm,-1.25cm)$) rectangle ($(current page.south east)+(-1.25cm,1.25cm)$);
+\end{tikzpicture}
+
+\centering
+\vspace*{1.2cm}
+
+\includegraphics[width=7cm]{Capture.PNG}\par\vspace{1.5cm}
+
+{\Large University of Boumerdes\par}
+\vspace{0.25cm}
+{\large Faculty of Science\par}
+{\large Department of Computer Science\par}
+\vspace{0.3cm}
+{\large Module AOS\par}
+\vspace{2cm}
+
+\begin{minipage}{0.88\textwidth}
+\centering
+\setlength{\fboxsep}{12pt}
+\colorbox{green!12}{\parbox{\textwidth}{
+\centering
+{\Huge \textbf{Internship Management Platform}\par}
+\vspace{0.4cm}
+{\Large Detailed Technical Report\par}
+}}
+\end{minipage}
+
+\vspace{2.2cm}
+
+\begin{minipage}{0.88\textwidth}
+\setlength{\fboxsep}{10pt}
+\colorbox{green!8}{\parbox{\textwidth}{
+\centering
+\textbf{Prepared by}\\[0.5em]
+\begin{minipage}[t]{0.45\textwidth}
+\centering
+Bensot lina farah\\[0.3em]
+Kohli ahlam
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\centering
+Lama mohamed\\[0.3em]
+Sebabkhi fares
+\end{minipage}
+}}
+\end{minipage}
+
+\vfill
+
+\textbf{Date:} April 2026
+
+\vspace*{0.8cm}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+%==================== INTRODUCTION ====================%
+\section{Introduction}
+
+In modern academic and professional environments, managing internships efficiently has become increasingly important. Traditional processes relying on manual paperwork, email communication, and fragmented tracking are often inefficient, time-consuming, and prone to errors.
+
+This report presents a detailed analysis of a web-based \textbf{Internship Management Platform} designed to automate internship workflows and facilitate interactions between students, companies, supervisors, and administrators.
+
+\subsection{Motivation}
+
+The project was motivated by the following challenges:
+\begin{itemize}
+    \item Manual tracking of internship applications causes delays and miscommunication.
+    \item Students lack a centralized platform to monitor their progress and submit reports.
+    \item Companies face difficulty in managing candidates and internship offers efficiently.
+    \item Supervisors struggle to evaluate intern performance in a structured and timely manner.
+\end{itemize}
+
+\subsection{Objectives}
+
+The main objectives of the platform are:
+\begin{itemize}
+    \item Automate internship workflows and reduce manual work
+    \item Improve communication between all stakeholders
+    \item Provide a secure and scalable platform
+    \item Enable real-time tracking of applications and evaluations
+\end{itemize}
+
+\subsection{Scope}
+
+The system targets university students, companies offering internships, supervisors evaluating students, and administrators managing the platform. It supports:
+\begin{itemize}
+    \item Internship search and application
+    \item Real-time tracking of student progress
+    \item Structured evaluation and feedback
+    \item Secure authentication and role-based access
+\end{itemize}
+
+\newpage
+
+%==================== SYSTEM OVERVIEW ====================%
+\section{System Overview}
+
+The Internship Platform is designed as a distributed system with multiple independent services, following a modular architecture to ensure maintainability and scalability.
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{photo_5960857000293895328_y.jpg} % replace with your image filename
+    \caption{System Overview of the Internship Platform}
+    \label{fig:database_architecture}
+\end{figure}
+
+\subsection{User Roles}
+
+The platform defines four primary user roles:
+
+\begin{itemize}
+    \item \textbf{Student:} Searches and applies for internships, tracks progress, submits reports.
+    \item \textbf{Company:} Publishes internship offers, manages applications, and evaluates candidates.
+    \item \textbf{Supervisor:} Monitors student progress, provides guidance, and performs evaluations.
+    \item \textbf{Administrator:} Oversees platform operations, verifies companies, and manages users.
+\end{itemize}
+
+\subsection{System Objectives}
+
+\begin{itemize}
+    \item Provide a centralized internship management system accessible online.
+    \item Reduce administrative overhead by automating repetitive tasks.
+    \item Ensure transparency and traceability for all operations.
+    \item Enable scalability to accommodate more users over time.
+\end{itemize}
+
+
+
+
+
+%==================== BACKEND DESIGN ====================%
+\section{Backend Design}
+
+The backend is implemented using \textbf{Django} and \textbf{Django REST Framework (DRF)}, providing a robust and secure REST full API.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.1\textwidth]{images.png}
+   \includegraphics[width=0.2\textwidth]{api.png}
+   \includegraphics[width=0.2\textwidth]{reset2.PNG}
+\end{figure}
+
+\subsection{Service Responsibilities}
+
+Each backend service has a specific responsibility:
+
+\begin{itemize}
+    \item \textbf{Auth Service:} Handles user authentication, registration, password recovery, and security.
+    \item \textbf{Student Service:} Manages student profiles, applications, progress, and report submissions.
+    \item \textbf{Company Service:} Handles company accounts, internship postings, and candidate tracking.
+    \item \textbf{Internship Service:} Stores internship offers and manages availability.
+    \item \textbf{Application Service:} Tracks student applications and status updates.
+    \item \textbf{Evaluation Service:} Manages evaluations, scores, and supervisor feedback.
+    \item \textbf{Notification Service:} Sends notifications and alerts to students, companies, and supervisors via email or in-app messages, e.g., new internship postings, application updates, evaluation reminders, and deadlines.
+\end{itemize}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{photo_5960857000293895325_y.jpg} % replace with your image filename
+    \caption{Overview of  Services in the Internship Platform}
+    \label{fig:architecture}
+\end{figure}
+
+\subsection{API Communication}
+
+The backend services communicate via REST APIs using \texttt{JSON} payloads. This approach ensures interoperability, ease of development, and simplified integration with the frontend.
+
+\subsection{Security Mechanisms}
+
+\begin{itemize}
+    \item \textbf{Token-based Authentication:} JWT tokens for secure login sessions.
+    \item \textbf{Role-based Access Control:} Ensures each user can access only authorized resources.
+    \item \textbf{Data Validation:} Prevents invalid or malicious data from being processed.
+    \item \textbf{HTTPS Encryption:} Secures data in transit between client and server.
+\end{itemize}
+
+\subsection{Notification Service Workflow}
+
+The Notification Service ensures that all stakeholders receive timely updates. Typical workflows include:
+
+\begin{enumerate}
+    \item Student submits an internship application → Notification Service alerts the company.
+    \item Company updates application status → Student receives an update.
+    \item Supervisor submits evaluation → Student and administrator receive feedback notifications.
+    \item Administrator approves a new company → Company receives confirmation notification.
+\end{enumerate}
+
+This service decouples notifications from core services, improving scalability and maintainability.
+
+\subsection{Backend Workflow Example}
+
+\begin{enumerate}
+    \item Student logs in using credentials → Auth Service validates.
+    \item Student submits an internship application → Application Service records it.
+    \item Company reviews application → Internship Service updates status.
+    \item Supervisor evaluates student → Evaluation Service stores scores and feedback.
+\end{enumerate}
+
+
+
+%==================== DATABASE DESIGN ====================%
+\section{Database Design}
+
+The database uses \textbf{PostgreSQL} hosted via \textbf{Supabase}. It stores all platform entities with relationships and security mechanisms.
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{photo_5960857000293895326_y.jpg} % replace with your image filename
+    \caption{Architecture of the Internship Platform Database}
+    \label{fig:architecture}
+\end{figure}
+
+\subsection{Entities}
+
+\begin{itemize}
+    \item \textbf{Users:} Common user data (email, password, role).
+    \item \textbf{Students:} Profiles, CVs, and progress tracking.
+    \item \textbf{Companies:} Organization details and internship postings.
+    \item \textbf{Internships:} Offer descriptions, requirements, and status.
+    \item \textbf{Applications:} Submission tracking and status.
+    \item \textbf{Evaluations:} Supervisor ratings, feedback, and completion records.
+\end{itemize}
+
+
+
+
+
+\subsection{Security}
+
+\begin{itemize}
+    \item Row-level security ensures users access only authorized data
+    \item Data encryption and backups protect sensitive information
+\end{itemize}
+    \section{Sequence diagram}
+\begin{figure}[h!]
+    \centering
+\includegraphics[width=0.9\textwidth]{photo_5963108800107580573_y.jpg} % replace with your image filename
+    \caption{Sequence Diagram of Internship Platform Workflow}
+    \label{fig:sequence_diagram}
+\end{figure}
+
+
+
+
+
+
+%==================== KEY FEATURES ====================%
+\section{Key Features}
+
+\subsection{Authentication and Authorization}
+
+Secure login and registration are implemented using token-based authentication (JWT), ensuring that user sessions are protected and scalable. The system also provides password recovery mechanisms through email verification to enhance account security. Role-based access control (RBAC) is enforced to restrict access to resources based on user roles (student, company, supervisor, administrator), ensuring data privacy and system integrity.
+
+\subsection{Company Verification}
+
+Administrator approval ensures that only verified and legitimate companies can post internship offers on the platform. This process includes reviewing company information, validating credentials, and preventing fraudulent or unauthorized access. It enhances trust, maintains data integrity, and guarantees a reliable environment for students seeking internships.
+
+\subsection{Internship Management}
+
+The platform allows companies to create, edit, and delete internship offers with comprehensive descriptions, requirements, and deadlines. Students can view all available internships with filtering and search options to find the most suitable opportunities. All changes are tracked to maintain transparency and ensure that students have access to the latest information in real-time.
+
+\subsection{Application Tracking}
+
+The platform allows students and companies to track internship applications in real time, displaying status updates such as “Submitted,” “Under Review,” or “Accepted.” Notifications are automatically sent to students and companies whenever the application status changes, keeping all stakeholders informed. This system ensures transparency, reduces delays, and helps users manage their internship process efficiently.
+
+\subsection{Evaluation System}
+
+The evaluation system provides structured forms that allow supervisors to assess interns on predefined criteria such as skills, performance, and professionalism. Supervisors can submit detailed feedback, which is securely stored in the database and linked to the student’s profile. This system ensures transparent, consistent, and trackable evaluations while enabling administrators and students to monitor performance progress over time.
+
+\subsection{Reporting}
+
+The platform generates comprehensive reports on students’ progress, including completed tasks, submitted reports, and evaluation scores. It also provides insights into company activity, such as internship postings, application statistics, and engagement levels. Additionally, supervisors and administrators can access detailed evaluation summaries to monitor performance trends and support decision-making.
+
+\subsection{Notifications}
+
+The platform includes a robust notification system that sends timely alerts to users via email and in-app messages. Students receive notifications for new internship postings, application status updates, and evaluation results. Companies and supervisors are also notified about pending approvals, deadlines, and feedback submissions, ensuring smooth communication across all stakeholders.
+\section{Class diagram}
+\begin{figure}[h!]
+    \centering
+\includegraphics[width=0.9\textwidth]{photo_5963108800107580598_y.jpg} % replace with your image filename
+    \caption{Class Diagram of Internship Platform Workflow}
+    \label{fig:class_diagram}
+\end{figure}
+%==================== FRONTEND DESIGN ====================%
+\section{Frontend Design}
+The frontend is implemented using \textbf{React.js}, with a component-based architecture and responsive UI design.
+
+\subsection{Architecture}
+
+\begin{itemize}
+    \item Component-based structure for maintainability
+    \item Integration with backend REST APIs
+    \item State management using Context API or Redux
+    \item Routing handled with React Router
+\end{itemize}
+
+\subsection{User Interface Design}
+
+\begin{itemize}
+    \item Responsive layout for desktop and mobile devices
+    \item Dashboard for students, companies, and supervisors
+    \item Search and filter functionalities for internships
+    \item Forms for applications, reports, and evaluations
+\end{itemize}
+
+\subsection{User Interaction Workflow}
+
+\begin{enumerate}
+    \item Student logs in and views dashboard
+    \item Student searches for available internships
+    \item Student submits application → receives confirmation
+    \item Company reviews applications → updates status
+    \item Supervisor evaluates student → feedback visible in dashboard
+\end{enumerate}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.9\textwidth]{photo_5960857000293895327_y.jpg} % replace with your image filename
+    \caption{Architecture of the Internship Platform Frontend}
+    \label{fig:frontend_architecture}
+\end{figure}
+
+
+
+%==================== ADVANTAGES ====================%
+\section{Advantages of the System}
+
+\begin{itemize}
+    \item \textbf{Scalability:} Microservices allow adding features without affecting other modules.
+    \item \textbf{Maintainability:} Modular design simplifies updates and debugging.
+    \item \textbf{Security:} Role-based access, token authentication, and database security.
+    \item \textbf{Flexibility:} Frontend and backend are decoupled, enabling independent development.
+\end{itemize}
+
+
+
+%==================== LIMITATIONS ====================%
+\section{Limitations}
+
+\begin{itemize}
+    \item Microservices architecture introduces complexity in deployment and monitoring
+    \item Initial setup requires significant configuration
+    \item Requires reliable internet connection for full functionality
+\end{itemize}
+
+
+
+%==================== FUTURE WORK ====================%
+\section{Future Improvements}
+
+\begin{itemize}
+    \item AI-powered internship recommendations
+    \item Mobile application for Android and iOS
+    \item Advanced analytics and dashboards for administrators
+    \item Integration with external academic platforms
+\end{itemize}
+
+
+
+%==================== TESTING ====================%
+\section{Testing}
+
+\subsection{Unit Testing}
+
+Each backend service and frontend component is tested independently using \textbf{pytest} and \textbf{Jest}.
+
+\subsection{Integration Testing}
+
+APIs are tested for correct responses, data consistency, and security validation.
+
+\subsection{User Acceptance Testing}
+
+Students, supervisors, and companies perform tasks to validate usability, workflow, and overall satisfaction.
+
+
+
+
+
+
+
+\subsection{Description}
+
+\begin{itemize}
+    \item Backend: Django services with REST APIs
+    \item Frontend: React components and pages
+    \item Tests: Unit and integration tests
+    \item Docs: Project documentation and diagrams
+\end{itemize}
+
+
+
+%==================== CONCLUSION ====================%
+\section{Conclusion}
+
+This Internship Platform demonstrates a modern, scalable, and secure system that automates the management of internships. It provides benefits for students, companies, supervisors, and administrators while maintaining flexibility and maintainability. Future enhancements will focus on AI recommendations, mobile access, and advanced analytics.
+
+
+%==================== DELIVERABLES ====================%
+\section{Livrables}
+
+Les livrables du projet sont les suivants :
+
+\begin{itemize}
+    \item D\'ep\^ot Git complet.
+    \item Rapport technique (PDF).
+    \item Pr\'esentation + d\'emonstration live.
+    \item Preuve du d\'eploiement multi-serveurs.
+\end{itemize}
+
+\begin{center}
+\setlength{\fboxsep}{12pt}
+\colorbox{green!14}{\parbox{0.95\textwidth}{
+\textbf{\textcolor{green!45!black}{1. D\'ep\^ot Git complet}}\\[0.4em]
+Le code source complet est disponible sur
+\href{https://github.com/mohamedlama-ship-it/internship-platform}{github.com/mohamedlama-ship-it/internship-platform}.
+}}
+\end{center}
+
+\begin{center}
+\setlength{\fboxsep}{12pt}
+\colorbox{green!14}{\parbox{0.95\textwidth}{
+\textbf{\textcolor{green!45!black}{4. Preuve du d\'eploiement multi-serveurs}}\\[0.4em]
+Le service d'authentification est conteneuris\'e, publi\'e sur Docker Hub, puis ex\'ecut\'e sur Railway.
+L'API publique expose le m\^eme comportement que l'endpoint local
+\texttt{http://localhost:8080/api/auth} via
+\href{https://internship-platform-auth-service-production.up.railway.app/api/auth}{https://internship-platform-auth-service-production.up.railway.app/api/auth}.
+\vspace{0.8em}
+
+\begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \setlength{\fboxsep}{6pt}
+    \colorbox{green!8}{\parbox{\linewidth}{
+        \centering
+        \textbf{Docker Hub}\\[0.5em]
+        \IfFileExists{docker.png}{\includegraphics[width=\linewidth]{docker.png}}{\fbox{\parbox{\linewidth}{\centering Image docker.png non trouv\'ee.}}}\\[0.5em]
+        \href{https://hub.docker.com/repository/docker/mohamedlama/internship-platform-auth-service/general}{Repository Docker Hub}
+    }}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \setlength{\fboxsep}{6pt}
+    \colorbox{green!8}{\parbox{\linewidth}{
+        \centering
+        \textbf{Railway}\\[0.5em]
+        \IfFileExists{railway.png}{\includegraphics[width=\linewidth]{railway.png}}{\fbox{\parbox{\linewidth}{\centering Image railway.png non trouv\'ee.}}}\\[0.5em]
+        \href{https://internship-platform-auth-service-production.up.railway.app/api/auth}{API publique Railway}
+    }}
+\end{minipage}
+}}
+\end{center}
+\begin{thebibliography}{99}
+
+\bibitem{vincent2020}
+William S. Vincent, \textit{Django for Professionals}, 2020.
+
+\bibitem{richardson2013}
+Leonard Richardson, Mike Amundsen, Sam Ruby, \textit{RESTful Web APIs}, 2013.
+
+\bibitem{banks2020}
+Alex Banks and Eve Porcello, \textit{Learning React}, 2020.
+
+\bibitem{hernandez2013}
+Michael J. Hernandez, \textit{Database Design for Mere Mortals}, 2013.
+
+\bibitem{drf_doc}
+Django REST Framework Documentation, \url{https://www.django-rest-framework.org/}
+
+\bibitem{react_doc}
+React Official Documentation, \url{https://reactjs.org/docs/getting-started.html}
+
+\bibitem{supabase_doc}
+Supabase Documentation, \url{https://supabase.com/docs}
+
+\bibitem{owasp_auth}
+OWASP Authentication Cheat Sheet, \url{https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html}
+
+\end{thebibliography}
+
+\end{document}

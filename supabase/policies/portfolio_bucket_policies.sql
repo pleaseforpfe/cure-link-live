@@ -1,10 +1,3 @@
--- Storage policies for bucket: `portfolio`
---
--- Notes:
--- - This uses the app publishable (anon) key, so CRUD is allowed to public roles.
--- - No folder enforcement yet (keeps setup simple). Tighten later if needed.
-
-alter table storage.objects enable row level security;
 
 drop policy if exists "portfolio_storage_read" on storage.objects;
 drop policy if exists "portfolio_storage_insert" on storage.objects;

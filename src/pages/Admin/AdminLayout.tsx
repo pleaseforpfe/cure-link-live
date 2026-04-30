@@ -1,6 +1,6 @@
 import { PropsWithChildren, useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, CalendarClock, Coffee, FileText, Handshake, LayoutGrid, LogOut, UserRound, UsersRound } from "lucide-react";
+import { BarChart3, CalendarClock, Coffee, FileText, Handshake, LayoutGrid, LogOut, Newspaper, UserRound, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { clearAdminSession, getAdminSession } from "./session";
@@ -13,6 +13,7 @@ const navItems = [
   { to: "/admin/post-coffee", label: "Post Coffee", icon: Coffee },
   { to: "/admin/organizers", label: "Organizers", icon: UsersRound },
   { to: "/admin/portfolio", label: "Portfolio", icon: LayoutGrid },
+  { to: "/admin/homepage-cms", label: "Homepage CMS", icon: Newspaper },
   { to: "/admin/profile", label: "Profile", icon: UserRound },
 ] as const;
 

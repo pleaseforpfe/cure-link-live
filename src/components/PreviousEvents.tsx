@@ -1,16 +1,49 @@
 import { motion } from "framer-motion";
 import { Calendar, MapPin, ArrowUpRight } from "lucide-react";
-import event1 from "@/assets/event-1.jpg";
-import event2 from "@/assets/event-2.jpg";
-import event3 from "@/assets/event-3.jpg";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
-const events = [
-  { img: event1, date: "Nov 2024", location: "Paris, France", title: "European Cardiology Summit" },
-  { img: event2, date: "Jun 2024", location: "Dubai, UAE", title: "Middle East Med Congress" },
-  { img: event3, date: "Mar 2024", location: "Tokyo, Japan", title: "Asia-Pacific Surgical Forum" },
-];
+type EditionRow = {
+  id: string;
+  title: string;
+  event_date: string;
+  location: string;
+  image_url: string;
+  link_url: string | null;
+};
 
 export function PreviousEvents() {
+  const [rows, setRows] = useState<EditionRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRows() {
+      const { data, error } = await supabase
+        .from("home_previous_editions")
+        .select("id, title, event_date, location, image_url, link_url")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .limit(12);
+
+      if (cancelled || error || !data) return;
+      setRows(data as EditionRow[]);
+    }
+
+    loadRows();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const items = rows.map((row) => ({
+    img: row.image_url,
+    date: row.event_date,
+    location: row.location,
+    title: row.title,
+    link: row.link_url,
+  }));
+
   return (
     <section className="container py-24">
       <div className="flex items-end justify-between gap-6 mb-12 flex-wrap">
@@ -24,7 +57,7 @@ export function PreviousEvents() {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {events.map((e, i) => (
+        {items.map((e, i) => (
           <motion.article
             key={e.title}
             initial={{ opacity: 0, y: 30 }}
@@ -32,6 +65,9 @@ export function PreviousEvents() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: i * 0.1 }}
             className="group relative rounded-3xl overflow-hidden bg-card border border-border card-hover cursor-pointer"
+            onClick={() => {
+              if (e.link) window.open(e.link, "_blank", "noopener,noreferrer");
+            }}
           >
             <div className="aspect-[4/3] overflow-hidden">
               <img
@@ -57,6 +93,11 @@ export function PreviousEvents() {
           </motion.article>
         ))}
       </div>
+      {items.length === 0 ? (
+        <div className="mt-8 rounded-2xl border border-dashed border-border bg-card/60 p-6 text-center text-sm text-muted-foreground">
+          No previous editions have been published yet.
+        </div>
+      ) : null}
     </section>
   );
 }

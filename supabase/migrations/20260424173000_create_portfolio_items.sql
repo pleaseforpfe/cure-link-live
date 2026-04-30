@@ -1,4 +1,4 @@
--- Portfolio for `/portfolio`
+-- Portfolio for `/gallery`
 
 create extension if not exists "pgcrypto";
 

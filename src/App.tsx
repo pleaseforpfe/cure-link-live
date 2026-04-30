@@ -21,6 +21,7 @@ import AdminPostCoffee from "./pages/Admin/AdminPostCoffee.tsx";
 import AdminOrganizers from "./pages/Admin/AdminOrganizers.tsx";
 import AdminPortfolio from "./pages/Admin/AdminPortfolio.tsx";
 import AdminProfile from "./pages/Admin/AdminProfile.tsx";
+import AdminHomepageCms from "./pages/Admin/AdminHomepageCms.tsx";
 
 const queryClient = new QueryClient();
 
@@ -37,7 +38,7 @@ const App = () => (
             <Route path="/partners" element={<Partners />} />
             <Route path="/clubs" element={<Clubs />} />
             <Route path="/organizers" element={<Organizers />} />
-            <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/gallery" element={<Portfolio />} />
             <Route path="/login" element={<AdminLogin />} />
 
             <Route path="/admin" element={<AdminLayout />}>
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="post-coffee" element={<AdminPostCoffee />} />
               <Route path="organizers" element={<AdminOrganizers />} />
               <Route path="portfolio" element={<AdminPortfolio />} />
+              <Route path="homepage-cms" element={<AdminHomepageCms />} />
               <Route path="profile" element={<AdminProfile />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

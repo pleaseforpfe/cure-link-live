@@ -6,27 +6,23 @@ import { useLanguage } from "@/contexts/language";
 import { supabase } from "@/lib/supabase";
 
 export function LiveAttendance() {
-  const [count, setCount] = useState(4218);
+  const [count, setCount] = useState<number>(0);
+  const [countLabel, setCountLabel] = useState<string>("");
+  const [loaded, setLoaded] = useState(false);
   const [stats, setStats] = useState<{ speakers: number; sessions: number; partners: number }>({
-    speakers: 64,
-    sessions: 120,
-    partners: 42,
+    speakers: 0,
+    sessions: 0,
+    partners: 0,
   });
   const { t } = useLanguage();
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setCount((c) => c + Math.floor(Math.random() * 7) - 2);
-    }, 3500);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
     async function run() {
-      const [timelineRes, partnersRes] = await Promise.all([
+      const [timelineRes, partnersRes, liveMetricRes] = await Promise.all([
         supabase.from("timeline_cards").select("full_name"),
         supabase.from("partners").select("id"),
+        supabase.from("home_live_metrics").select("attendance_count, attendance_label, is_active").eq("is_active", true).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
 
       if (cancelled) return;
@@ -42,6 +38,12 @@ export function LiveAttendance() {
         sessions: (timelineRes.data ?? []).length,
         partners: partnersRes.data?.length ?? 0,
       });
+
+      if (!liveMetricRes.error && liveMetricRes.data) {
+        setCount(liveMetricRes.data.attendance_count ?? 0);
+        setCountLabel(liveMetricRes.data.attendance_label ?? "");
+      }
+      setLoaded(true);
     }
     run();
     return () => {
@@ -75,12 +77,14 @@ export function LiveAttendance() {
 
         <div className="text-center">
           <div className="text-5xl md:text-6xl font-extrabold gradient-text leading-none tabular-nums">
-            <CountUp end={count} duration={1500} />
+            {loaded ? <CountUp end={count} duration={1500} /> : <span>0</span>}
           </div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mt-2 flex items-center justify-center gap-1.5">
-            <Activity className="h-3 w-3 text-live" />
-            {t.liveAttendance.updated}
-          </div>
+          {countLabel ? (
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mt-2 flex items-center justify-center gap-1.5">
+              <Activity className="h-3 w-3 text-live" />
+              {countLabel}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex md:justify-end gap-6 text-center">

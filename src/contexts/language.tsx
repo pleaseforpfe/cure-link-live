@@ -9,7 +9,7 @@ type Dictionary = {
     partners: string;
     postCoffee: string;
     organizers: string;
-    portfolio: string;
+    Gallery: string;
   };
   footer: {
     conference: string;
@@ -82,6 +82,28 @@ type Dictionary = {
     description: string;
     button: string;
   };
+  registration: {
+    kicker: string;
+    titleLine1: string;
+    titleLine2: string;
+    description: string;
+    date: string;
+    location: string;
+    includedLabel: string;
+    includedItems: string[];
+    formKicker: string;
+    formTitle: string;
+    namePlaceholder: string;
+    emailPlaceholder: string;
+    orgPlaceholder: string;
+    participationPlaceholder: string;
+    participationOptions: string[];
+    interestPlaceholder: string;
+    interestOptions: string[];
+    textareaPlaceholder: string;
+    submit: string;
+    helper: string;
+  };
   languageToggle: string;
 };
 
@@ -93,14 +115,14 @@ const copy: Record<Language, Dictionary> = {
       partners: "Our Partners",
       postCoffee: "Post Coffee",
       organizers: "Organizers",
-      portfolio: "Portfolio",
+      Gallery: "Gallery",
     },
     footer: {
       conference: "Conference",
       contact: "Contact",
       description:
-        "The global stage where medicine meets innovation. Two days of science, connection, and inspiration at the University of Ouargla, in collaboration with the Ouargla Physicians Organization.",
-      rights: "© 2026 MedConf. All rights reserved.",
+        "The global stage where medicine meets innovation. Two days of science, connection, and inspiration at the University of Ouargla, in collaboration with the A.M.O.",
+      rights: "© 2026 4JMC. All rights reserved.",
       crafted: "Crafted for the global medical community.",
     },
     organizersHero: {
@@ -144,8 +166,8 @@ const copy: Record<Language, Dictionary> = {
     },
     portfolioHero: {
       kicker: "Visual Identity",
-      title: "Design Portfolio",
-      description: "Posters, badges and product mockups crafted by the MedConf design team.",
+      title: "Design Gallery",
+      description: "Posters, badges and product mockups crafted by the 4JMC design team.",
     },
     newsTicker: {
       label: "Live News",
@@ -163,7 +185,7 @@ const copy: Record<Language, Dictionary> = {
       titleLine1: "4th Medical-Surgical Days of",
       titleLine2: "Ouargla",
       description:
-        "The global stage where medicine meets innovation. Two days of science, connection, and inspiration at the University of Ouargla, in collaboration with the Ouargla Physicians Organization.",
+        "The global stage where medicine meets innovation. Two days of science, connection, and inspiration at the University of Ouargla, in collaboration with the A.M.O.",
       date: "08-09 May 2026",
       location: "Amphitheatre de l'universite KASDI Merbah Ouargla",
       ctaPrimary: "View Sessions",
@@ -220,14 +242,14 @@ const copy: Record<Language, Dictionary> = {
       partners: "Nos partenaires",
       postCoffee: "Post Coffee",
       organizers: "Organisateurs",
-      portfolio: "Portfolio",
+      Gallery: "Gallery",
     },
     footer: {
       conference: "Conference",
       contact: "Contact",
       description:
         "La scene mondiale ou la medecine rencontre l innovation. Deux jours de science, de connexion et d inspiration a l Universite d Ouargla, en collaboration avec l Organisation des Medecins d Ouargla.",
-      rights: "© 2026 MedConf. Tous droits reserves.",
+      rights: "© 2026 4JMC. Tous droits reserves.",
       crafted: "Concu pour la communaute medicale mondiale.",
     },
     organizersHero: {
@@ -271,8 +293,8 @@ const copy: Record<Language, Dictionary> = {
     },
     portfolioHero: {
       kicker: "Identite visuelle",
-      title: "Portfolio design",
-      description: "Affiches, badges et maquettes produit realises par l equipe design MedConf.",
+      title: "Gallery design",
+      description: "Affiches, badges et maquettes produit realises par l equipe design 4JMC.",
     },
     newsTicker: {
       label: "Infos en direct",
