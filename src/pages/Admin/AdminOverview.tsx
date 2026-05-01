@@ -2,6 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { HardDrive, LayoutGrid, Handshake, CalendarClock, UsersRound, Coffee } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { clamp01, formatBytes } from "./admin-utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -127,6 +140,11 @@ export default function AdminOverview() {
 
   const buckets = useMemo(() => ["timeline", "partners", "clubs", "organizers", "portfolio", "program"], []);
   const limitBytes = useMemo(() => 1024 * 1024 * 1024, []); // 1 GB
+  const [clearingBucket, setClearingBucket] = useState<string | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [selectedBucket, setSelectedBucket] = useState<string | null>(null);
+  const [confirmInput, setConfirmInput] = useState("");
+  const { toast } = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -255,6 +273,63 @@ export default function AdminOverview() {
     };
   }, [buckets]);
 
+  function handleClearBucket(bucket: string) {
+    setSelectedBucket(bucket);
+    setConfirmInput("");
+    setConfirmDialogOpen(true);
+  }
+
+  async function performClearBucket(bucket: string) {
+    setConfirmDialogOpen(false);
+    setClearingBucket(bucket);
+    toast({ title: `Clearing ${bucket}…`, description: "This may take a while for large buckets." });
+    try {
+      // collect all file paths recursively
+      const paths: string[] = [];
+      const queue: string[] = [""];
+      while (queue.length) {
+        const prefix = queue.shift() ?? "";
+        const { data, error } = await supabase.storage.from(bucket).list(prefix, { limit: 1000 });
+        if (error) throw error;
+        for (const entry of data ?? []) {
+          const maybeSize = (entry as unknown as { metadata?: { size?: number } }).metadata?.size;
+          if (typeof maybeSize === "number") {
+            paths.push(prefix ? `${prefix}/${entry.name}` : entry.name);
+          } else {
+            const nextPrefix = prefix ? `${prefix}/${entry.name}` : entry.name;
+            queue.push(nextPrefix);
+          }
+        }
+      }
+
+      // remove in chunks to avoid large requests
+      for (let i = 0; i < paths.length; i += 1000) {
+        const chunk = paths.slice(i, i + 1000);
+        const { error } = await supabase.storage.from(bucket).remove(chunk);
+        if (error) throw error;
+      }
+
+      toast({ title: `Bucket cleared`, description: `"${bucket}" — ${paths.length} files removed.` });
+    } catch (e) {
+      toast({ title: "Failed to clear bucket", description: String(e instanceof Error ? e.message : e) });
+    } finally {
+      setClearingBucket(null);
+      // refresh this bucket usage
+      try {
+        const row = await getBucketUsage(bucket);
+        setStorage((s) => {
+          if (!s) return s;
+          const newBuckets = s.buckets.map((b) => (b.bucket === bucket ? row : b));
+          const totalBytes = newBuckets.reduce((sum, u) => sum + u.totalBytes, 0);
+          const files = newBuckets.reduce((sum, u) => sum + u.files, 0);
+          return { ...s, buckets: newBuckets, totalBytes, files };
+        });
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   const statCards: {
     label: string;
     value: number;
@@ -331,17 +406,77 @@ export default function AdminOverview() {
               <div className="space-y-4">
                 <UsageBar usedBytes={storage.totalBytes} limitBytes={limitBytes} />
                 <div className="text-xs text-muted-foreground">
-                  Buckets: <span className="font-semibold text-foreground">{storage.buckets.map((b) => b.bucket).join(", ")}</span> · Files:{" "}
-                  <span className="font-semibold text-foreground tabular-nums">{storage.files}</span>
+                  Buckets: <span className="font-semibold text-foreground">{storage.buckets.map((b) => b.bucket).join(", ")}</span> · Files: <span className="font-semibold text-foreground tabular-nums">{storage.files}</span>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {storage.buckets.map((b) => (
-                    <span key={b.bucket}>
-                      <span className="font-semibold text-foreground">{b.bucket}</span>: {formatBytes(b.totalBytes)}{" "}
-                      <span className="text-muted-foreground">({b.files} files)</span>{" "}
-                    </span>
-                  ))}
+
+                <div className="space-y-2 mt-2">
+                  {storage.buckets.map((b) => {
+                    const isClearing = clearingBucket === b.bucket;
+                    const redThreshold = 750 * 1024 * 1024;
+                    const yellowThreshold = 500 * 1024 * 1024;
+                    const badgeClass =
+                      b.totalBytes >= redThreshold
+                        ? "bg-red-50 text-red-700"
+                        : b.totalBytes >= yellowThreshold
+                        ? "bg-yellow-50 text-yellow-700"
+                        : "bg-emerald-50 text-emerald-700";
+
+                    return (
+                      <div key={b.bucket} className="flex items-center justify-between gap-3 p-3 bg-background rounded-xl">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-3">
+                            <div className="font-semibold text-foreground">{b.bucket}</div>
+                            <div className={`text-xs px-2 py-1 rounded-full ${badgeClass} font-semibold`}>{formatBytes(b.totalBytes)}</div>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">{b.files} files</div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="rounded-full"
+                            onClick={() => handleClearBucket(b.bucket)}
+                            disabled={isClearing}
+                          >
+                            {isClearing ? "Clearing…" : "Clear bucket"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+
+                <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear bucket</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all files in the selected bucket. To confirm, type the bucket name
+                        and press "Clear". This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <div>
+                      <Input
+                        placeholder={selectedBucket ?? "bucket name"}
+                        value={confirmInput}
+                        onChange={(e) => setConfirmInput(e.target.value)}
+                        data-test-id="confirm-bucket-input"
+                      />
+                    </div>
+
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => selectedBucket && performClearBucket(selectedBucket)}
+                        disabled={confirmInput !== selectedBucket}
+                      >
+                        Clear
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             ) : (
               <div className="space-y-2">
