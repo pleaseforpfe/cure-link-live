@@ -5,6 +5,7 @@ import { LiveAttendance } from "@/components/LiveAttendance";
 import { LiveStream } from "@/components/LiveStream";
 import { PreviousEvents } from "@/components/PreviousEvents";
 import { ProgramCTA } from "@/components/ProgramCTA";
+import { RegistrationCTA } from "@/components/RegistrationCTA";
 import { Footer } from "@/components/Footer";
 
 const Index = () => {
@@ -18,6 +19,7 @@ const Index = () => {
         <LiveStream />
         <PreviousEvents />
         <ProgramCTA />
+        <RegistrationCTA />
       </main>
       <Footer />
     </div>

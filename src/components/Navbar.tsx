@@ -81,6 +81,14 @@ export function Navbar() {
             >
               {t.languageToggle}
             </Button>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSeVRQDEVvzojcHZKq3iJRSA9LWVuzjmleR26Vx916ysBEQ5dQ/viewform" target="_blank" rel="noopener noreferrer">
+              <Button
+                size="sm"
+                className="rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold hidden sm:inline-flex"
+              >
+                Register
+              </Button>
+            </a>
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(!open)} aria-label="Menu">
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
