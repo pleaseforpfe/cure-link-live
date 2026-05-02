@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { CalendarClock, ChevronRight, Link2, Loader2, Pencil, Plus, Radio, Trash2, UploadCloud, UserRound } from "lucide-react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { CalendarClock, ChevronDown, ChevronRight, Link2, Loader2, Pencil, Plus, Radio, Trash2, UploadCloud, UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,8 +74,10 @@ function toLocalInputValue(iso: string) {
 export default function AdminLiveProgram() {
   // Session management
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsStats, setSessionsStats] = useState<Record<string, { moderators: number; programs: number; liveName?: string }>>({});
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const detailsRef = useRef<HTMLDivElement | null>(null);
 
   // Moderators
   const [moderators, setModerators] = useState<Moderator[]>([]);
@@ -88,49 +90,7 @@ export default function AdminLiveProgram() {
   const [programLoading, setProgramLoading] = useState(false);
   const [addProgramOpen, setAddProgramOpen] = useState(false);
   const [programCreateStep, setProgramCreateStep] = useState(0);
-
-  // General state
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmTitle, setConfirmTitle] = useState("");
-  const [confirmDescription, setConfirmDescription] = useState("");
-  const [confirmActionLabel, setConfirmActionLabel] = useState("Confirm");
-  const [confirmRunning, setConfirmRunning] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
-
-  const [sessionEditOpen, setSessionEditOpen] = useState(false);
-  const [sessionTitleDraft, setSessionTitleDraft] = useState("");
-  const [editingModerator, setEditingModerator] = useState<Moderator | null>(null);
-  const [moderatorNameDraft, setModeratorNameDraft] = useState("");
-  const [editingProgram, setEditingProgram] = useState<Program | null>(null);
-  const [programEditStep, setProgramEditStep] = useState(0);
-  const [programEditDraft, setProgramEditDraft] = useState({
-    full_name: "",
-    specialty: "",
-    organization: "",
-    talk_title: "",
-    starts_at: "",
-    ends_at: "",
-    stream_url: "",
-    is_live: false,
-    description: "",
-    research_paper_url: "",
-    speaker_profile_url: "",
-  });
-
-  const [saving, setSaving] = useState(false);
-  const [savingStage, setSavingStage] = useState<string | null>(null);
-  const [savingProgress, setSavingProgress] = useState(0);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
-  const [galleryPreviewUrls, setGalleryPreviewUrls] = useState<string[]>([]);
-  const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
-  const [editGalleryFiles, setEditGalleryFiles] = useState<File[]>([]);
-  const [editPhotoPreviewUrl, setEditPhotoPreviewUrl] = useState<string | null>(null);
-  const [editGalleryPreviewUrls, setEditGalleryPreviewUrls] = useState<string[]>([]);
-  const editPhotoInputRef = useRef<HTMLInputElement | null>(null);
+  const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const editGalleryInputRef = useRef<HTMLInputElement | null>(null);
 
   const fullNameInputRef = useRef<HTMLInputElement | null>(null);
@@ -150,6 +110,56 @@ export default function AdminLiveProgram() {
     research_paper_url: "",
     speaker_profile_url: "",
   });
+
+  // UI / helper state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState("");
+  const [confirmDescription, setConfirmDescription] = useState("");
+  const [confirmActionLabel, setConfirmActionLabel] = useState("");
+  const [confirmAction, setConfirmAction] = useState<(() => Promise<void>) | null>(null);
+  const [confirmRunning, setConfirmRunning] = useState(false);
+
+  const [sessionEditOpen, setSessionEditOpen] = useState(false);
+  const [sessionTitleDraft, setSessionTitleDraft] = useState("");
+
+  const [editingModerator, setEditingModerator] = useState<Moderator | null>(null);
+  const [moderatorNameDraft, setModeratorNameDraft] = useState("");
+
+  const [editingProgram, setEditingProgram] = useState<Program | null>(null);
+  const [programEditStep, setProgramEditStep] = useState(0);
+  const [programEditDraft, setProgramEditDraft] = useState<any>({
+    full_name: "",
+    specialty: "",
+    organization: "",
+    talk_title: "",
+    starts_at: "",
+    ends_at: "",
+    stream_url: "",
+    is_live: false,
+    description: "",
+    research_paper_url: "",
+    speaker_profile_url: "",
+  });
+
+  const editPhotoInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
+  const [editGalleryFiles, setEditGalleryFiles] = useState<File[]>([]);
+  const [editPhotoPreviewUrl, setEditPhotoPreviewUrl] = useState<string | null>(null);
+  const [editGalleryPreviewUrls, setEditGalleryPreviewUrls] = useState<string[]>([]);
+
+  const [saving, setSaving] = useState(false);
+  const [savingStage, setSavingStage] = useState<string | null>(null);
+  const [savingProgress, setSavingProgress] = useState(0);
+
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Create flow media states
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [galleryPreviewUrls, setGalleryPreviewUrls] = useState<string[]>([]);
 
   const bucketName = import.meta.env.VITE_SUPABASE_TIMELINE_BUCKET || "timeline";
 
@@ -294,6 +304,10 @@ export default function AdminLiveProgram() {
     setEditGalleryPreviewUrls(program.gallery ?? []);
   }
 
+  function selectSession(session: Session) {
+    setSelectedSession(session);
+  }
+
   async function saveProgramEdit() {
     if (!editingProgram) return;
     setSaving(true);
@@ -322,11 +336,19 @@ export default function AdminLiveProgram() {
       }
 
       setSavingStage("Finalizing…");
+      // prepare links as a JSON array; preserve existing links if user didn't provide any
+      const newLinks: { label: string; url: string }[] = [];
+      const rp = (programEditDraft.research_paper_url ?? "").trim();
+      const sp = (programEditDraft.speaker_profile_url ?? "").trim();
+      if (rp) newLinks.push({ label: "Research Paper", url: rp });
+      if (sp) newLinks.push({ label: "Speaker Profile", url: sp });
+      const linksToSave = newLinks.length > 0 ? newLinks : (editingProgram?.links ?? []);
+
       const { error } = await supabase
         .from("timeline_cards")
         .update({
           full_name: programEditDraft.full_name.trim(),
-          specialty: programEditDraft.specialty.trim() || null,
+          specialty: programEditDraft.specialty.trim() || "",
           organization: programEditDraft.organization.trim(),
           talk_title: programEditDraft.talk_title.trim(),
           starts_at: toIsoFromLocal(programEditDraft.starts_at),
@@ -335,9 +357,12 @@ export default function AdminLiveProgram() {
           is_live: programEditDraft.is_live,
           photo_url: photoUrl,
           gallery: uploadedGallery,
+          links: linksToSave,
         })
         .eq("id", id);
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message ?? "Failed to update program");
+      }
 
       toast.success("Program updated");
       setEditingProgram(null);
@@ -362,7 +387,39 @@ export default function AdminLiveProgram() {
       setSessionLoading(false);
       return;
     }
-    setSessions((data ?? []) as Session[]);
+    const fetched = (data ?? []) as Session[];
+    setSessions(fetched);
+
+    // compute stats for all sessions: moderators, programs, live name
+    try {
+      const [modsRes, progsRes] = await Promise.all([
+        supabase.from("moderators").select("id,session_id"),
+        supabase.from("timeline_cards").select("id,session_id,is_live,full_name"),
+      ]);
+      if (modsRes.error || progsRes.error) {
+        // ignore stats on failure
+        setSessionsStats({});
+      } else {
+        const mods = modsRes.data ?? [];
+        const progs = progsRes.data ?? [];
+        const stats: Record<string, { moderators: number; programs: number; liveName?: string }> = {};
+        for (const s of fetched) stats[s.id] = { moderators: 0, programs: 0 };
+        for (const m of mods) {
+          if (!m.session_id) continue;
+          stats[m.session_id] = stats[m.session_id] ?? { moderators: 0, programs: 0 };
+          stats[m.session_id].moderators += 1;
+        }
+        for (const p of progs) {
+          if (!p.session_id) continue;
+          stats[p.session_id] = stats[p.session_id] ?? { moderators: 0, programs: 0 };
+          stats[p.session_id].programs += 1;
+          if (p.is_live) stats[p.session_id].liveName = p.full_name;
+        }
+        setSessionsStats(stats);
+      }
+    } catch {
+      setSessionsStats({});
+    }
     setSessionLoading(false);
   }
 
@@ -598,9 +655,36 @@ export default function AdminLiveProgram() {
       return;
     }
 
+    // Check for existing live program
+    const { data: existing, error: existingErr } = await supabase.from("timeline_cards").select("id,full_name").eq("is_live", true).limit(1);
+    if (existingErr) {
+      toast.error(existingErr.message);
+      return;
+    }
+    if (existing && existing.length > 0 && existing[0].id !== prog.id) {
+      // friendly message and confirm override
+      requestConfirm({
+        title: "Another program is live",
+        description: `${existing[0].full_name} is already live. Override and make "${prog.full_name}" live?`,
+        actionLabel: "Override and make live",
+        action: async () => {
+          // unset other live and set this one
+          const unset = await supabase.from("timeline_cards").update({ is_live: false }).eq("is_live", true).neq("id", prog.id);
+          if (unset.error) throw unset.error;
+          const set = await supabase.from("timeline_cards").update({ is_live: true }).eq("id", prog.id);
+          if (set.error) throw set.error;
+          toast.success("Live program updated");
+          if (selectedSession) refreshPrograms(selectedSession.id);
+        },
+      });
+      return;
+    }
+
     const setRes = await supabase.from("timeline_cards").update({ is_live: true }).eq("id", prog.id);
     if (setRes.error) {
-      toast.error(setRes.error.message);
+      // try to show friendly message
+      const raw = setRes.error.message ?? "Failed to set live";
+      toast.error(raw);
       return;
     }
     toast.success("Live program updated");
@@ -926,41 +1010,417 @@ export default function AdminLiveProgram() {
                 <div className="p-6 text-sm text-muted-foreground">No sessions yet.</div>
               ) : (
                 sessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className={cn(
-                      "px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-muted/40 transition",
-                      selectedSession?.id === session.id && "bg-muted/60",
-                    )}
-                    onClick={() => setSelectedSession(session)}
-                  >
-                    <div>
-                      <div className="font-semibold">{session.title}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {moderators.filter((m) => m.session_id === session.id).length} moderators ·{" "}
-                        {programs.filter((p) => p.session_id === session.id).length} programs ·{" "}
-                        {programs.filter((p) => p.session_id === session.id && p.is_live).length} live
+                  <div key={session.id} className="px-6 py-4">
+                    <div
+                      className={cn(
+                        "flex items-center justify-between cursor-pointer rounded-2xl px-2 py-1.5 hover:bg-muted/40 transition",
+                        selectedSession?.id === session.id && "bg-muted/60",
+                      )}
+                      onClick={() => selectSession(session)}
+                    >
+                      <div>
+                        <div className="font-semibold">{session.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {sessionsStats[session.id]?.moderators ?? 0} moderators · {sessionsStats[session.id]?.programs ?? 0} programs · {sessionsStats[session.id]?.liveName ? `${sessionsStats[session.id]?.liveName} live` : "0 live"}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-2xl"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            requestConfirm({
+                              title: "Delete session?",
+                              description: session.title,
+                              actionLabel: "Delete",
+                              action: async () => deleteSession(session.id),
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform", selectedSession?.id === session.id && "rotate-180")} />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-2xl"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          requestConfirm({
-                            title: "Delete session?",
-                            description: session.title,
-                            actionLabel: "Delete",
-                            action: async () => deleteSession(session.id),
-                          });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </div>
+
+                    {selectedSession?.id === session.id ? (
+                      <div className="mt-3 rounded-3xl border border-primary/20 bg-gradient-to-br from-background/80 to-muted/10 p-4 shadow-sm space-y-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Focused Session</div>
+                            <h2 className="text-2xl font-black mt-1">{selectedSession.title}</h2>
+                            {moderators.length ? (
+                              <div className="mt-3 text-sm text-muted-foreground">
+                                Moderators: <span className="font-semibold text-foreground">{moderators.map((m) => m.full_name).join(" · ")}</span>
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              className="rounded-2xl"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedSession(null);
+                              }}
+                            >
+                              Close
+                            </Button>
+                          </div>
+                        </div>
+
+                        <Card className="rounded-3xl">
+                          <CardContent className="p-0">
+                            <div className="px-6 py-5 border-b border-border/60 flex items-center justify-between">
+                              <div>
+                                <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">{selectedSession.title}</div>
+                                <div className="flex items-center gap-2 text-lg font-extrabold">
+                                  Moderators
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={openSessionEdit}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <Dialog open={addModeratorOpen} onOpenChange={setAddModeratorOpen}>
+                                <DialogTrigger asChild>
+                                  <Button variant="hero" className="rounded-2xl">
+                                    <Plus />
+                                    Add Moderator
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="rounded-3xl">
+                                  <DialogHeader>
+                                    <DialogTitle>Add Moderator</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="grid gap-4">
+                                    <div className="grid gap-2">
+                                      <Label>Name</Label>
+                                      <Input
+                                        ref={fullNameInputRef}
+                                        value={moderatorForm.full_name}
+                                        onChange={(e) => setModeratorForm({ full_name: e.target.value })}
+                                        placeholder="John Doe"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end gap-2">
+                                    <Button variant="outline" className="rounded-2xl" onClick={() => setAddModeratorOpen(false)} disabled={saving}>
+                                      Cancel
+                                    </Button>
+                                    <Button className="rounded-2xl" onClick={addModerator} disabled={saving || !moderatorForm.full_name.trim()}>
+                                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+
+                            {moderatorLoading ? (
+                              <div className="p-6 text-sm text-muted-foreground">Loading moderators…</div>
+                            ) : (
+                              <Table>
+                                <TableBody>
+                                  {moderators.length === 0 ? (
+                                    <TableRow>
+                                      <TableCell colSpan={2} className="text-sm text-muted-foreground">
+                                        No moderators yet.
+                                      </TableCell>
+                                    </TableRow>
+                                  ) : (
+                                    moderators.map((mod) => (
+                                      <TableRow key={mod.id}>
+                                        <TableCell className="font-semibold">{mod.full_name}</TableCell>
+                                        <TableCell className="text-right">
+                                          <div className="flex justify-end gap-2">
+                                            <Button variant="outline" size="sm" className="rounded-2xl" onClick={() => openModeratorEdit(mod)}>
+                                              <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="rounded-2xl"
+                                              onClick={() =>
+                                                requestConfirm({
+                                                  title: "Delete moderator?",
+                                                  description: mod.full_name,
+                                                  actionLabel: "Delete",
+                                                  action: async () => deleteModerator(mod.id),
+                                                })
+                                              }
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))
+                                  )}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        <Card className="rounded-3xl">
+                          <CardContent className="p-0">
+                            <div className="px-6 py-5 border-b border-border/60 flex items-center justify-between">
+                              <div>
+                                <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">{selectedSession.title}</div>
+                                <div className="flex items-center gap-2 text-lg font-extrabold">
+                                  Programs
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={openSessionEdit}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <Dialog open={addProgramOpen} onOpenChange={setAddProgramOpen}>
+                                <DialogTrigger asChild>
+                                  <Button variant="hero" className="rounded-2xl">
+                                    <Plus />
+                                    Add Program
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="relative max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl">
+                                  <DialogHeader>
+                                    <DialogTitle>Add Program to {selectedSession.title}</DialogTitle>
+                                    <DialogDescription>
+                                      Use the same staged flow: speaker, session, media, then links.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-4 gap-2">
+                                      {programStepMeta.map((step, index) => {
+                                        const StepIcon = step.icon;
+                                        const active = programCreateStep === index;
+                                        const done = programCreateStep > index;
+                                        return (
+                                          <button
+                                            key={step.label}
+                                            type="button"
+                                            onClick={() => setProgramCreateStep(index)}
+                                            className={cn(
+                                              "flex items-center gap-2 rounded-2xl border px-3 py-2 text-left transition",
+                                              active ? "border-secondary bg-secondary/10 text-secondary" : "border-border/60 bg-muted/30",
+                                            )}
+                                          >
+                                            <span
+                                              className={cn(
+                                                "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
+                                                done || active ? "bg-secondary text-secondary-foreground" : "bg-background text-muted-foreground",
+                                              )}
+                                            >
+                                              {done ? <Pencil className="h-3.5 w-3.5" /> : <StepIcon className="h-3.5 w-3.5" />}
+                                            </span>
+                                            <span className="text-xs font-bold uppercase tracking-widest">{step.label}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                    <div className="max-h-[66vh] overflow-y-auto pr-2 -mr-2">
+                                      <div className="mr-2">
+                                      {programCreateStep === 0 && (
+                                        <div className="grid gap-4">
+                                          <div className="grid gap-2">
+                                            <Label>Full Name</Label>
+                                            <Input value={programForm.full_name} onChange={(e) => setProgramForm((p) => ({ ...p, full_name: e.target.value }))} />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label>Specialty</Label>
+                                            <Input value={programForm.specialty} onChange={(e) => setProgramForm((p) => ({ ...p, specialty: e.target.value }))} />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label>Organization</Label>
+                                            <Input value={programForm.organization} onChange={(e) => setProgramForm((p) => ({ ...p, organization: e.target.value }))} />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label>LinkedIn URL</Label>
+                                            <Input value={programForm.linkedin_url} onChange={(e) => setProgramForm((p) => ({ ...p, linkedin_url: e.target.value }))} placeholder="https://linkedin.com/in/..." />
+                                          </div>
+                                        </div>
+                                      )}
+                                      {programCreateStep === 1 && (
+                                        <div className="grid gap-4">
+                                          <div className="grid gap-2">
+                                            <Label>Talk Title</Label>
+                                            <Input value={programForm.talk_title} onChange={(e) => setProgramForm((p) => ({ ...p, talk_title: e.target.value }))} />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label>Description</Label>
+                                            <Input value={programForm.description} onChange={(e) => setProgramForm((p) => ({ ...p, description: e.target.value }))} placeholder="Short session description" />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label>Start Time</Label>
+                                            <DateTimePicker value={programForm.starts_at} minDate={new Date()} onChange={(v) => setProgramForm((p) => ({ ...p, starts_at: v }))} />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label>End Time</Label>
+                                            <DateTimePicker value={programForm.ends_at} minDate={programForm.starts_at ? new Date(programForm.starts_at) : new Date()} onChange={(v) => setProgramForm((p) => ({ ...p, ends_at: v }))} />
+                                          </div>
+                                        </div>
+                                      )}
+                                      {programCreateStep === 2 && (
+                                        <div className="grid gap-4">
+                                          <div className="grid gap-2">
+                                            <Label>Speaker Photo</Label>
+                                            <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-border/70 bg-muted/30 px-4 py-3 hover:bg-muted/60">
+                                              <div className="flex items-center gap-3">
+                                                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                                                  <Plus className="h-4 w-4" />
+                                                </span>
+                                                <div>
+                                                  <div className="text-sm font-semibold">Upload speaker photo</div>
+                                                  <div className="text-xs text-muted-foreground">PNG or JPG</div>
+                                                </div>
+                                              </div>
+                                              <UploadCloud className="h-5 w-5 text-muted-foreground" />
+                                              <Input ref={photoInputRef} type="file" accept="image/*" className="sr-only" onChange={(e) => handlePhotoSelected(e.target.files?.[0] ?? null)} />
+                                            </label>
+                                            {photoPreviewUrl && <img src={photoPreviewUrl} alt="Speaker preview" className="mt-2 h-40 w-full rounded-2xl object-cover" />}
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label>Gallery Images</Label>
+                                            <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-border/70 bg-muted/30 px-4 py-3 hover:bg-muted/60">
+                                              <div className="flex items-center gap-3">
+                                                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-secondary shadow-sm">
+                                                  <Plus className="h-4 w-4" />
+                                                </span>
+                                                <div>
+                                                  <div className="text-sm font-semibold">Add gallery images</div>
+                                                  <div className="text-xs text-muted-foreground">Up to 3 images</div>
+                                                </div>
+                                              </div>
+                                              <UploadCloud className="h-5 w-5 text-muted-foreground" />
+                                              <Input ref={galleryInputRef} type="file" accept="image/*" multiple className="sr-only" onChange={(e) => handleGallerySelected(Array.from(e.target.files ?? []))} />
+                                            </label>
+                                            {galleryPreviewUrls.length > 0 && (
+                                              <div className="grid grid-cols-3 gap-2">
+                                                {galleryPreviewUrls.map((src) => (
+                                                  <img key={src} src={src} alt="Gallery preview" className="h-24 w-full rounded-2xl object-cover" />
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {programCreateStep === 3 && (
+                                        <div className="grid gap-4">
+                                          <div className="grid gap-2">
+                                            <Label>Research Paper URL</Label>
+                                            <Input value={programForm.research_paper_url} onChange={(e) => setProgramForm((p) => ({ ...p, research_paper_url: e.target.value }))} placeholder="https://..." />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label>Speaker Profile URL</Label>
+                                            <Input value={programForm.speaker_profile_url} onChange={(e) => setProgramForm((p) => ({ ...p, speaker_profile_url: e.target.value }))} placeholder="https://..." />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <Label>Stream URL</Label>
+                                            <Input value={programForm.stream_url} onChange={(e) => setProgramForm((p) => ({ ...p, stream_url: e.target.value }))} placeholder="https://..." />
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between gap-2 border-t border-border/60 pt-4">
+                                    <Button variant="outline" className="rounded-2xl" onClick={() => setProgramCreateStep(Math.max(0, programCreateStep - 1))} disabled={programCreateStep === 0 || saving}>
+                                      Back
+                                    </Button>
+                                    <div className="flex gap-2">
+                                      {programCreateStep < 3 && (
+                                        <Button className="rounded-2xl" onClick={() => setProgramCreateStep(programCreateStep + 1)} disabled={saving}>
+                                          Next
+                                        </Button>
+                                      )}
+                                      {programCreateStep === 3 && (
+                                        <Button className="rounded-2xl" onClick={createProgram} disabled={saving || !programForm.full_name || !programForm.talk_title || !photoFile}>
+                                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+
+                            {programLoading ? (
+                              <div className="p-6 text-sm text-muted-foreground">Loading programs…</div>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Speaker</TableHead>
+                                    <TableHead>Topic</TableHead>
+                                    <TableHead>Time</TableHead>
+                                    <TableHead className="w-[100px]">Live</TableHead>
+                                    <TableHead className="w-[120px]">Actions</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {programs.length === 0 ? (
+                                    <TableRow>
+                                      <TableCell colSpan={5} className="text-sm text-muted-foreground">
+                                        No programs yet.
+                                      </TableCell>
+                                    </TableRow>
+                                  ) : (
+                                    programs.map((prog) => (
+                                      <Fragment key={prog.id}>
+                                        <TableRow key={prog.id} data-state={prog.is_live ? "selected" : undefined} onClick={() => setExpandedProgramId(expandedProgramId === prog.id ? null : prog.id)}>
+                                          <TableCell className="font-semibold">{prog.full_name}</TableCell>
+                                          <TableCell className="text-muted-foreground">{prog.talk_title}</TableCell>
+                                          <TableCell className="text-muted-foreground tabular-nums text-xs">{toLocalInputValue(prog.starts_at).replace("T", " ")}</TableCell>
+                                          <TableCell>
+                                            <Button variant={prog.is_live ? "secondary" : "outline"} size="sm" className={cn("rounded-2xl", prog.is_live && "text-live")} onClick={(e) => { e.stopPropagation(); setLive(prog); }}>
+                                              <Radio className="h-4 w-4" />
+                                            </Button>
+                                          </TableCell>
+                                          <TableCell>
+                                            <div className="flex gap-2 justify-end">
+                                              <Button variant="outline" size="sm" className="rounded-2xl" onClick={(e) => { e.stopPropagation(); openProgramEdit(prog); }}>
+                                                <Pencil className="h-4 w-4" />
+                                              </Button>
+                                              <Button variant="outline" size="sm" className="rounded-2xl" onClick={(e) => { e.stopPropagation(); requestConfirm({ title: "Delete program?", description: prog.talk_title, actionLabel: "Delete", action: async () => deleteProgram(prog.id), }); }}>
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                        {expandedProgramId === prog.id ? (
+                                          <TableRow key={`${prog.id}-details`}>
+                                            <TableCell colSpan={5} className="bg-muted/10">
+                                              <div className="p-4 grid md:grid-cols-3 gap-4 items-start">
+                                                <div className="md:col-span-1">
+                                                  {prog.photo_url ? <img src={prog.photo_url} alt="speaker" className="w-full h-36 object-cover rounded-lg" /> : <div className="h-36 w-full rounded-lg bg-muted" />}
+                                                  <div className="text-sm font-semibold mt-2">{prog.full_name}</div>
+                                                  <div className="text-xs text-muted-foreground">{prog.specialty}</div>
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                  <div className="text-sm font-bold">{prog.talk_title}</div>
+                                                  <div className="text-sm text-muted-foreground mt-2">{prog.description}</div>
+                                                  <div className="mt-3 flex flex-wrap gap-2">
+                                                    {prog.links?.map((l) => (
+                                                      <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="text-xs text-secondary underline">
+                                                        {l.label}
+                                                      </a>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </TableCell>
+                                          </TableRow>
+                                        ) : null}
+                                      </Fragment>
+                                    ))
+                                  )}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ) : null}
                   </div>
                 ))
               )}
@@ -968,463 +1428,6 @@ export default function AdminLiveProgram() {
           )}
         </CardContent>
       </Card>
-
-      {/* Session Details */}
-      {selectedSession && (
-            <div className="space-y-6">
-              <Card className="rounded-4xl border-2 border-primary/20 bg-gradient-to-br from-background/60 to-muted/5 shadow-xl overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Focused Session</div>
-                      <h2 className="text-3xl font-black mt-1">{selectedSession.title}</h2>
-                      {moderators.length ? (
-                        <div className="mt-3 text-sm text-muted-foreground">
-                          Moderators: <span className="font-semibold text-foreground">{moderators.map((m) => m.full_name).join(" · ")}</span>
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" className="rounded-2xl" onClick={() => setSelectedSession(null)}>Close</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-          {/* Moderators Section */}
-          <Card className="rounded-3xl">
-            <CardContent className="p-0">
-              <div className="px-6 py-5 border-b border-border/60 flex items-center justify-between">
-                <div>
-                  <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
-                    {selectedSession.title}
-                  </div>
-                  <div className="flex items-center gap-2 text-lg font-extrabold">
-                    Moderators
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={openSessionEdit}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <Dialog open={addModeratorOpen} onOpenChange={setAddModeratorOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="hero" className="rounded-2xl">
-                      <Plus />
-                      Add Moderator
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="rounded-3xl">
-                    <DialogHeader>
-                      <DialogTitle>Add Moderator</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label>Name</Label>
-                        <Input
-                          ref={fullNameInputRef}
-                          value={moderatorForm.full_name}
-                          onChange={(e) => setModeratorForm({ full_name: e.target.value })}
-                          placeholder="John Doe"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        className="rounded-2xl"
-                        onClick={() => setAddModeratorOpen(false)}
-                        disabled={saving}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        className="rounded-2xl"
-                        onClick={addModerator}
-                        disabled={saving || !moderatorForm.full_name.trim()}
-                      >
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              {moderatorLoading ? (
-                <div className="p-6 text-sm text-muted-foreground">Loading moderators…</div>
-              ) : (
-                <Table>
-                  <TableBody>
-                    {moderators.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={2} className="text-sm text-muted-foreground">
-                          No moderators yet.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      moderators.map((mod) => (
-                        <TableRow key={mod.id}>
-                          <TableCell className="font-semibold">{mod.full_name}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" className="rounded-2xl" onClick={() => openModeratorEdit(mod)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-2xl"
-                                onClick={() =>
-                                  requestConfirm({
-                                    title: "Delete moderator?",
-                                    description: mod.full_name,
-                                    actionLabel: "Delete",
-                                    action: async () => deleteModerator(mod.id),
-                                  })
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Programs Section */}
-          <Card className="rounded-3xl">
-            <CardContent className="p-0">
-              <div className="px-6 py-5 border-b border-border/60 flex items-center justify-between">
-                <div>
-                  <div className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
-                    {selectedSession.title}
-                  </div>
-                  <div className="flex items-center gap-2 text-lg font-extrabold">
-                    Programs
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={openSessionEdit}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <Dialog open={addProgramOpen} onOpenChange={setAddProgramOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="hero" className="rounded-2xl">
-                      <Plus />
-                      Add Program
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="relative max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl">
-                    <DialogHeader>
-                      <DialogTitle>Add Program to {selectedSession.title}</DialogTitle>
-                      <DialogDescription>
-                        Use the same staged flow: speaker, session, media, then links.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-4 gap-2">
-                        {programStepMeta.map((step, index) => {
-                          const StepIcon = step.icon;
-                          const active = programCreateStep === index;
-                          const done = programCreateStep > index;
-                          return (
-                            <button
-                              key={step.label}
-                              type="button"
-                              onClick={() => setProgramCreateStep(index)}
-                              className={cn(
-                                "flex items-center gap-2 rounded-2xl border px-3 py-2 text-left transition",
-                                active ? "border-secondary bg-secondary/10 text-secondary" : "border-border/60 bg-muted/30",
-                              )}
-                            >
-                              <span
-                                className={cn(
-                                  "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
-                                  done || active ? "bg-secondary text-secondary-foreground" : "bg-background text-muted-foreground",
-                                )}
-                              >
-                                {done ? <Pencil className="h-3.5 w-3.5" /> : <StepIcon className="h-3.5 w-3.5" />}
-                              </span>
-                              <span className="text-xs font-bold uppercase tracking-widest">{step.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="max-h-[66vh] overflow-y-auto pr-2 -mr-2">
-                        <div className="mr-2">
-                        {programCreateStep === 0 && (
-                          <div className="grid gap-4">
-                            <div className="grid gap-2">
-                              <Label>Full Name</Label>
-                              <Input
-                                value={programForm.full_name}
-                                onChange={(e) => setProgramForm((p) => ({ ...p, full_name: e.target.value }))}
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Specialty</Label>
-                              <Input
-                                value={programForm.specialty}
-                                onChange={(e) => setProgramForm((p) => ({ ...p, specialty: e.target.value }))}
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Organization</Label>
-                              <Input
-                                value={programForm.organization}
-                                onChange={(e) => setProgramForm((p) => ({ ...p, organization: e.target.value }))}
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>LinkedIn URL</Label>
-                              <Input
-                                value={programForm.linkedin_url}
-                                onChange={(e) => setProgramForm((p) => ({ ...p, linkedin_url: e.target.value }))}
-                                placeholder="https://linkedin.com/in/..."
-                              />
-                            </div>
-                          </div>
-                        )}
-                        {programCreateStep === 1 && (
-                          <div className="grid gap-4">
-                            <div className="grid gap-2">
-                              <Label>Talk Title</Label>
-                              <Input
-                                value={programForm.talk_title}
-                                onChange={(e) => setProgramForm((p) => ({ ...p, talk_title: e.target.value }))}
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Description</Label>
-                              <Input
-                                value={programForm.description}
-                                onChange={(e) => setProgramForm((p) => ({ ...p, description: e.target.value }))}
-                                placeholder="Short session description"
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Start Time</Label>
-                              <DateTimePicker
-                                value={programForm.starts_at}
-                                minDate={new Date()}
-                                onChange={(v) => setProgramForm((p) => ({ ...p, starts_at: v }))}
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>End Time</Label>
-                              <DateTimePicker
-                                value={programForm.ends_at}
-                                minDate={programForm.starts_at ? new Date(programForm.starts_at) : new Date()}
-                                onChange={(v) => setProgramForm((p) => ({ ...p, ends_at: v }))}
-                              />
-                            </div>
-                          </div>
-                        )}
-                        {programCreateStep === 2 && (
-                          <div className="grid gap-4">
-                            <div className="grid gap-2">
-                              <Label>Speaker Photo</Label>
-                              <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-border/70 bg-muted/30 px-4 py-3 hover:bg-muted/60">
-                                <div className="flex items-center gap-3">
-                                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-                                    <Plus className="h-4 w-4" />
-                                  </span>
-                                  <div>
-                                    <div className="text-sm font-semibold">Upload speaker photo</div>
-                                    <div className="text-xs text-muted-foreground">PNG or JPG</div>
-                                  </div>
-                                </div>
-                                <UploadCloud className="h-5 w-5 text-muted-foreground" />
-                                <Input
-                                  ref={photoInputRef}
-                                  type="file"
-                                  accept="image/*"
-                                  className="sr-only"
-                                  onChange={(e) => handlePhotoSelected(e.target.files?.[0] ?? null)}
-                                />
-                              </label>
-                              {photoPreviewUrl && (
-                                <img
-                                  src={photoPreviewUrl}
-                                  alt="Speaker preview"
-                                  className="mt-2 h-40 w-full rounded-2xl object-cover"
-                                />
-                              )}
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Gallery Images</Label>
-                              <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-dashed border-border/70 bg-muted/30 px-4 py-3 hover:bg-muted/60">
-                                <div className="flex items-center gap-3">
-                                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-secondary shadow-sm">
-                                    <Plus className="h-4 w-4" />
-                                  </span>
-                                  <div>
-                                    <div className="text-sm font-semibold">Add gallery images</div>
-                                    <div className="text-xs text-muted-foreground">Up to 3 images</div>
-                                  </div>
-                                </div>
-                                <UploadCloud className="h-5 w-5 text-muted-foreground" />
-                                <Input
-                                  ref={galleryInputRef}
-                                  type="file"
-                                  accept="image/*"
-                                  multiple
-                                  className="sr-only"
-                                  onChange={(e) => handleGallerySelected(Array.from(e.target.files ?? []))}
-                                />
-                              </label>
-                              {galleryPreviewUrls.length > 0 && (
-                                <div className="grid grid-cols-3 gap-2">
-                                  {galleryPreviewUrls.map((src) => (
-                                    <img
-                                      key={src}
-                                      src={src}
-                                      alt="Gallery preview"
-                                      className="h-24 w-full rounded-2xl object-cover"
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        {programCreateStep === 3 && (
-                          <div className="grid gap-4">
-                            <div className="grid gap-2">
-                              <Label>Research Paper URL</Label>
-                              <Input
-                                value={programForm.research_paper_url}
-                                onChange={(e) => setProgramForm((p) => ({ ...p, research_paper_url: e.target.value }))}
-                                placeholder="https://..."
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Speaker Profile URL</Label>
-                              <Input
-                                value={programForm.speaker_profile_url}
-                                onChange={(e) => setProgramForm((p) => ({ ...p, speaker_profile_url: e.target.value }))}
-                                placeholder="https://..."
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label>Stream URL</Label>
-                              <Input
-                                value={programForm.stream_url}
-                                onChange={(e) => setProgramForm((p) => ({ ...p, stream_url: e.target.value }))}
-                                placeholder="https://..."
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex justify-between gap-2 border-t border-border/60 pt-4">
-                      <Button
-                        variant="outline"
-                        className="rounded-2xl"
-                        onClick={() => setProgramCreateStep(Math.max(0, programCreateStep - 1))}
-                        disabled={programCreateStep === 0 || saving}
-                      >
-                        Back
-                      </Button>
-                      <div className="flex gap-2">
-                        {programCreateStep < 3 && (
-                          <Button
-                            className="rounded-2xl"
-                            onClick={() => setProgramCreateStep(programCreateStep + 1)}
-                            disabled={saving}
-                          >
-                            Next
-                          </Button>
-                        )}
-                        {programCreateStep === 3 && (
-                          <Button
-                            className="rounded-2xl"
-                            onClick={createProgram}
-                            disabled={saving || !programForm.full_name || !programForm.talk_title || !photoFile}
-                          >
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              {programLoading ? (
-                <div className="p-6 text-sm text-muted-foreground">Loading programs…</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Speaker</TableHead>
-                      <TableHead>Topic</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead className="w-[100px]">Live</TableHead>
-                      <TableHead className="w-[120px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {programs.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                          No programs yet.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      programs.map((prog) => (
-                        <TableRow key={prog.id} data-state={prog.is_live ? "selected" : undefined}>
-                          <TableCell className="font-semibold">{prog.full_name}</TableCell>
-                          <TableCell className="text-muted-foreground">{prog.talk_title}</TableCell>
-                          <TableCell className="text-muted-foreground tabular-nums text-xs">
-                            {toLocalInputValue(prog.starts_at).replace("T", " ")}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant={prog.is_live ? "secondary" : "outline"}
-                              size="sm"
-                              className={cn("rounded-2xl", prog.is_live && "text-live")}
-                              onClick={() => setLive(prog)}
-                            >
-                              <Radio className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2 justify-end">
-                              <Button variant="outline" size="sm" className="rounded-2xl" onClick={() => openProgramEdit(prog)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-2xl"
-                                onClick={() =>
-                                  requestConfirm({
-                                    title: "Delete program?",
-                                    description: prog.talk_title,
-                                    actionLabel: "Delete",
-                                    action: async () => deleteProgram(prog.id),
-                                  })
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

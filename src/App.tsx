@@ -22,6 +22,7 @@ import AdminOrganizers from "./pages/Admin/AdminOrganizers.tsx";
 import AdminPortfolio from "./pages/Admin/AdminPortfolio.tsx";
 import AdminProfile from "./pages/Admin/AdminProfile.tsx";
 import AdminHomepageCms from "./pages/Admin/AdminHomepageCms.tsx";
+import QRCodePage from "./pages/QRCode.tsx";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/clubs" element={<Clubs />} />
             <Route path="/organizers" element={<Organizers />} />
             <Route path="/gallery" element={<Portfolio />} />
+            <Route path="/qr-code" element={<QRCodePage />} />
             <Route path="/login" element={<AdminLogin />} />
 
             <Route path="/admin" element={<AdminLayout />}>
