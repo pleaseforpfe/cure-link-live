@@ -191,7 +191,7 @@ export default function Organizers() {
                           </div>
                         </DialogHeader>
 
-                        <ScrollArea className="max-h-[65vh]">
+                        <ScrollArea className="max-h-[65vh] overflow-y-auto">
                           <div className="p-6 pt-0">
                             <div className="grid sm:grid-cols-2 gap-4">
                               {group.people.map((person) => (
