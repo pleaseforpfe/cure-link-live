@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import speakerFallback from "@/assets/speaker-1.png";
-import { SpeakerCard, type TimelineSession, getTimelineStatus } from "@/components/SpeakerCard";
+import { SpeakerCard, type TimelineSession } from "@/components/SpeakerCard";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useLanguage } from "@/contexts/language";
@@ -17,7 +17,20 @@ type ModeratorRow = {
   full_name: string;
 };
 
-type ProgramRow = TimelineSession & {
+type ProgramRow = {
+  id: string;
+  full_name: string;
+  specialty: string;
+  organization: string;
+  photo_url: string | null;
+  talk_title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  links: { label: string; url: string }[] | null;
+  gallery: string[] | null;
+  is_live: boolean;
+  stream_url: string | null;
   session_id: string | null;
 };
 
@@ -72,27 +85,11 @@ export default function Timeline() {
         return;
       }
 
-      const programRows = (programsRes.data ?? []) as ProgramRow[];
+      const programRows = (programsRes.data ?? []) as unknown as ProgramRow[];
       const sessionRows = (sessionsRes.data ?? []) as SessionRow[];
       const moderatorRows = (moderatorsRes.data ?? []) as ModeratorRow[];
 
-      const next = programRows.map((row) => {
-        const r = row as {
-          id: string;
-          full_name: string;
-          specialty: string;
-          organization: string;
-          photo_url: string | null;
-          talk_title: string;
-          description: string | null;
-          starts_at: string;
-          ends_at: string;
-          links: { label: string; url: string }[];
-          gallery: string[];
-          is_live: boolean;
-          stream_url: string | null;
-        };
-
+      const next = programRows.map((r) => {
         const startsAt = new Date(r.starts_at).getTime();
         const endsAt = new Date(r.ends_at).getTime();
 
@@ -119,7 +116,7 @@ export default function Timeline() {
       const grouped = sessionRows.map((session) => {
         const programsForSession = next.filter((program) => (programRows.find((row) => row.id === program.id)?.session_id ?? null) === session.id);
         const moderatorsForSession = moderatorRows.filter((moderator) => moderator.session_id === session.id).map((moderator) => moderator.full_name);
-        const livePrograms = programsForSession.filter((program) => getTimelineStatus(program) === "live");
+        const livePrograms = programsForSession.filter((program) => program.isLive);
         return {
           id: session.id,
           title: session.title,

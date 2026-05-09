@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { Radio } from "lucide-react";
+import { ExternalLink, Radio } from "lucide-react";
 import { useLanguage } from "@/contexts/language";
 import { useEffect, useMemo, useState } from "react";
-import { fetchLiveSession, toYouTubeEmbedUrl } from "@/lib/live";
+import { fetchLiveSession, getLivePreview } from "@/lib/live";
+import { Button } from "@/components/ui/button";
 
 export function LiveStream() {
   const { t } = useLanguage();
@@ -28,7 +29,7 @@ export function LiveStream() {
     };
   }, []);
 
-  const embedUrl = useMemo(() => (streamUrl ? toYouTubeEmbedUrl(streamUrl) : null), [streamUrl]);
+  const preview = useMemo(() => (streamUrl ? getLivePreview(streamUrl) : null), [streamUrl]);
 
   return (
     <section id="live" className="container py-24 scroll-mt-24">
@@ -66,18 +67,44 @@ export function LiveStream() {
           <div className="aspect-video bg-black">
             {loading ? (
               <div className="w-full h-full flex items-center justify-center text-white/70 text-sm">Loading stream...</div>
-            ) : embedUrl ? (
+            ) : preview?.kind === "youtube" ? (
               <iframe
                 className="w-full h-full"
-                src={`${embedUrl}?autoplay=0&mute=1`}
+                src={`${preview.embedUrl}?autoplay=0&mute=1`}
                 title={t.liveStream.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 loading="lazy"
               />
+            ) : preview?.kind === "meet" ? (
+              <div className="w-full h-full flex items-center justify-center p-6 text-center text-white">
+                <div className="max-w-md space-y-4">
+                  <div className="text-sm uppercase tracking-widest text-white/70 font-bold">Google Meet</div>
+                  <div className="text-2xl font-extrabold">Live session available in Google Meet</div>
+                  <p className="text-white/75 text-sm leading-relaxed">
+                    This live stream opens in Google Meet instead of inside the page.
+                  </p>
+                  <Button asChild size="lg" variant="secondary" className="rounded-2xl">
+                    <a href={preview.url} target="_blank" rel="noreferrer">
+                      Join Google Meet
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-white/70 text-sm">
-                No live stream right now.
+              <div className="w-full h-full flex items-center justify-center p-6 text-center text-white/70 text-sm">
+                <div className="space-y-4 max-w-md">
+                  <div>No live stream right now.</div>
+                  {preview?.kind === "external" ? (
+                    <Button asChild size="lg" variant="secondary" className="rounded-2xl">
+                      <a href={preview.url} target="_blank" rel="noreferrer">
+                        Open live link
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             )}
           </div>

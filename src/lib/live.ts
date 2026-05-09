@@ -9,6 +9,11 @@ export type LiveSession = {
   ends_at: string;
 };
 
+export type LivePreview =
+  | { kind: "youtube"; url: string; embedUrl: string }
+  | { kind: "meet"; url: string }
+  | { kind: "external"; url: string };
+
 export function toYouTubeEmbedUrl(input: string) {
   try {
     const url = new URL(input);
@@ -35,11 +40,42 @@ export function toYouTubeEmbedUrl(input: string) {
   return input;
 }
 
+export function getLivePreview(input: string): LivePreview {
+  const trimmed = input.trim();
+
+  try {
+    const url = new URL(trimmed);
+
+    if (url.hostname.includes("youtube.com") || url.hostname === "youtu.be") {
+      return {
+        kind: "youtube",
+        url: trimmed,
+        embedUrl: toYouTubeEmbedUrl(trimmed),
+      };
+    }
+
+    if (url.hostname.includes("meet.google.com")) {
+      return {
+        kind: "meet",
+        url: trimmed,
+      };
+    }
+  } catch {
+    // fall through to external preview
+  }
+
+  return {
+    kind: "external",
+    url: trimmed,
+  };
+}
+
 export async function fetchLiveSession(): Promise<LiveSession | null> {
   const { data, error } = await supabase
     .from("timeline_cards")
     .select("id, stream_url, full_name, talk_title, starts_at, ends_at")
     .eq("is_live", true)
+    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw error;

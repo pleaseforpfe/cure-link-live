@@ -26,7 +26,6 @@ export function getTimelineStatus(s: TimelineSession): TimelineSessionStatus {
   if (s.isLive) return "live";
   const now = Date.now();
   if (now < s.startsAt) return "upcoming";
-  if (now < s.endsAt) return "live";
   return "done";
 }
 
