@@ -31,8 +31,16 @@ export function toYouTubeEmbedUrl(input: string) {
 
     // youtube.com/watch?v=<id>
     if (url.hostname.includes("youtube.com")) {
+      // watch?v=ID
       const id = url.searchParams.get("v");
       if (id) return `https://www.youtube.com/embed/${id}`;
+
+      // live/<id> (youtube short/live link)
+      if (url.pathname.startsWith("/live/")) {
+        const parts = url.pathname.split("/").filter(Boolean);
+        const liveId = parts[parts.length - 1];
+        if (liveId) return `https://www.youtube.com/embed/${liveId}`;
+      }
     }
   } catch {
     // ignore
